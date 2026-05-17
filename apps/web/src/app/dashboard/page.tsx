@@ -834,10 +834,10 @@ export default function DashboardPage() {
                     margin: 0,
                     lineHeight: 1.55,
                   }}
-                >
-                  Invite trusted friends who know your taste and who you'd
-                  actually click with.
-                </p>
+                  >
+                    Invite trusted friends who know your taste and who you&apos;d
+                    actually click with.
+                  </p>
               </div>
             ) : (
               <div
