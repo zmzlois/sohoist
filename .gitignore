@@ -32,7 +32,6 @@ out/
 
 # ── convex generated types ────────────────────────────────────────────────────
 # convex dev regenerates these automatically — no need to commit them
-packages/backend/convex/_generated/
 
 # ── expo / react native ───────────────────────────────────────────────────────
 apps/native/ios/build/
