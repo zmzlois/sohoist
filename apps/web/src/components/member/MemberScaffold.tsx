@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
-import logoMark from "../../../public/images/logo.png";
+import { webImages } from "@packages/ui/assets/web";
 
 export const palette = {
   paper: "#F5EFE6",
@@ -43,7 +43,12 @@ export function MemberScaffold({
         style={{ borderBottom: `1px solid ${palette.border}` }}
       >
         <Link href="/dashboard" style={styles.wordmarkWrap}>
-          <Image src={logoMark} alt="" style={styles.logoMark} priority />
+          <Image
+            src={webImages.logoMark}
+            alt=""
+            style={styles.logoMark}
+            priority
+          />
           <span>
             <span style={styles.wordmark}>Sohoist</span>
             <span style={styles.wordmarkLabel}>Private Introductions</span>

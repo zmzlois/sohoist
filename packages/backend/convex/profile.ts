@@ -2,6 +2,13 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { findCurrentUser, requireCurrentUser } from "./session";
 
+function randomToken() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(18)))
+    .map((b) => b.toString(36).padStart(2, "0"))
+    .join("")
+    .slice(0, 24);
+}
+
 /** the member's own profile row, or null if not yet created */
 export const getMyProfile = query({
   args: {
@@ -24,6 +31,9 @@ export const updateProfile = mutation({
     headline: v.optional(v.string()),
     bio: v.optional(v.string()),
     openTo: v.optional(v.string()),
+    aboutBullets: v.optional(v.array(v.string())),
+    lookingForBullets: v.optional(v.array(v.string())),
+    displayName: v.optional(v.string()),
     friendsShouldReferSomeoneWho: v.optional(v.string()),
     doNotReferIf: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
@@ -162,5 +172,96 @@ export const getMyVoiceInterview = query({
       .query("voiceInterviews")
       .withIndex("by_userId", (q: any) => q.eq("userId", user._id))
       .unique();
+  },
+});
+
+/** save or update display name and city on the member's profile */
+export const saveBasicProfile = mutation({
+  args: {
+    email: v.optional(v.string()),
+    displayName: v.string(),
+    city: v.string(),
+  },
+  handler: async (ctx, { email, displayName, city }) => {
+    const user = await requireCurrentUser(ctx, email);
+
+    // update the user's display name
+    await ctx.db.patch(user._id, { name: displayName });
+
+    const profile = await ctx.db
+      .query("memberProfiles")
+      .withIndex("by_userId", (q: any) => q.eq("userId", user._id))
+      .unique();
+
+    if (!profile) throw new Error("Profile not found");
+
+    await ctx.db.patch(profile._id, {
+      displayName,
+      city,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/** generate a unique share token for the member's profile, or return existing one */
+export const generateShareToken = mutation({
+  args: { email: v.optional(v.string()) },
+  handler: async (ctx, { email }) => {
+    const user = await requireCurrentUser(ctx, email);
+
+    const profile = await ctx.db
+      .query("memberProfiles")
+      .withIndex("by_userId", (q: any) => q.eq("userId", user._id))
+      .unique();
+
+    if (!profile) throw new Error("Profile not found");
+    if (profile.shareToken) return profile.shareToken;
+
+    const token = randomToken();
+    await ctx.db.patch(profile._id, { shareToken: token, updatedAt: Date.now() });
+    return token;
+  },
+});
+
+/** public — fetch a profile by share token, returns only safe public fields */
+export const getProfileByShareToken = query({
+  args: { token: v.string() },
+  handler: async (ctx, { token }) => {
+    const profile = await ctx.db
+      .query("memberProfiles")
+      .withIndex("by_shareToken", (q: any) => q.eq("shareToken", token))
+      .unique();
+
+    if (!profile || profile.ghostMode) return null;
+
+    const user = await ctx.db.get(profile.userId);
+    if (!user) return null;
+
+    // resolve sketch/photo URLs
+    const sketch = profile.sketchAssetId
+      ? await ctx.db.get(profile.sketchAssetId)
+      : null;
+    const photo =
+      profile.photoAssetId ? await ctx.db.get(profile.photoAssetId) : null;
+
+    // home photos
+    const homePhotos = await ctx.db
+      .query("homePhotos")
+      .withIndex("by_userId", (q: any) => q.eq("userId", profile.userId))
+      .collect();
+
+    return {
+      displayName: profile.displayName ?? user.name ?? "A member",
+      city: profile.hideCity ? null : profile.city,
+      aboutBullets: profile.aboutBullets ?? [],
+      lookingForBullets: profile.lookingForBullets ?? [],
+      tags: profile.tags ?? [],
+      sketchUrl: sketch?.url ?? null,
+      photoUrl:
+        profile.photoVisibility !== "sketch_only" ? (photo?.url ?? null) : null,
+      homePhotos: homePhotos
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((p) => ({ url: p.url, caption: p.caption })),
+    };
   },
 });

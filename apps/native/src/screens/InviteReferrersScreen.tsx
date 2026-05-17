@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  Alert,
   Share,
   StyleSheet,
   View,
@@ -10,7 +11,9 @@ import {
   Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
+  NativeModules,
 } from "react-native";
+import type * as ExpoContacts from "expo-contacts";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@packages/backend/convex/_generated/api";
@@ -57,12 +60,37 @@ function referrerBadgeTextColor(status: string): string {
   return colors.stone;
 }
 
+type ImportedContact = {
+  name: string;
+  emails: string[];
+  phones: string[];
+};
+
+function contactAccessLabel(status: string, alreadyOnSohoist: boolean) {
+  if (status === "approved") return "Has access";
+  if (status === "accepted") return "Needs approval";
+  if (status === "invited") return "Invited";
+  if (alreadyOnSohoist) return "On Sohoist";
+  return "Invite";
+}
+
+function firstContactMethod(row: { email?: string | null; phone?: string | null }) {
+  return row.email ?? row.phone ?? "";
+}
+
 export default function InviteReferrersScreen() {
   const router = useRouter();
   const { user } = useNativeAuth();
   const referrers = useQuery(
     api.referrers.getMyReferrers,
     user?.email ? { email: user.email } : "skip",
+  );
+  const [contacts, setContacts] = useState<ImportedContact[]>([]);
+  const contactMatches = useQuery(
+    api.referrers.matchContacts,
+    user?.email && contacts.length > 0
+      ? { email: user.email, contacts }
+      : "skip",
   );
   const inviteReferrer = useMutation(api.referrers.inviteReferrer);
   const createShareLink = useMutation(api.referrers.createShareLink);
@@ -72,6 +100,8 @@ export default function InviteReferrersScreen() {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [contactsEnabled, setContactsEnabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
 
@@ -79,6 +109,78 @@ export default function InviteReferrersScreen() {
   const [actionPending, setActionPending] = useState<string | null>(null);
 
   const canSend = email.trim().length > 0 && email.includes("@");
+  const visibleContactMatches = useMemo(
+    () => (contactMatches ?? []).slice(0, 12),
+    [contactMatches],
+  );
+
+  const handleLoadContacts = async () => {
+    if (loadingContacts) return;
+    setLoadingContacts(true);
+    setError(null);
+    try {
+      if (!NativeModules.ExpoContacts) {
+        setError(
+          "Contacts need a fresh native build. Rebuild the iOS app, then try again.",
+        );
+        return;
+      }
+
+      let Contacts: typeof ExpoContacts;
+      try {
+        Contacts = await import("expo-contacts");
+      } catch {
+        setError(
+          "Contacts need a fresh native build. Rebuild the iOS app, then try again.",
+        );
+        return;
+      }
+      if (
+        typeof Contacts.isAvailableAsync !== "function" ||
+        typeof Contacts.getContactsAsync !== "function"
+      ) {
+        setError(
+          "Contacts need a fresh native build. Rebuild the iOS app, then try again.",
+        );
+        return;
+      }
+
+      const available = await Contacts.isAvailableAsync();
+      if (!available) {
+        setError("Contacts are not available on this device.");
+        return;
+      }
+
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== "granted") {
+        setError("Contacts access was not granted.");
+        return;
+      }
+
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.Emails, Contacts.Fields.PhoneNumbers],
+        pageSize: 200,
+      });
+      const normalizedContacts = data
+        .map((contact) => ({
+          name: contact.name ?? "Unnamed contact",
+          emails:
+            contact.emails
+              ?.map((entry) => entry.email?.trim().toLowerCase())
+              .filter((value): value is string => Boolean(value)) ?? [],
+          phones:
+            contact.phoneNumbers
+              ?.map((entry) => entry.number?.trim())
+              .filter((value): value is string => Boolean(value)) ?? [],
+        }))
+        .filter((contact) => contact.emails.length > 0 || contact.phones.length > 0);
+
+      setContacts(normalizedContacts);
+      setContactsEnabled(true);
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
 
   const handleSendInvite = async () => {
     if (!canSend || sending) return;
@@ -94,6 +196,28 @@ export default function InviteReferrersScreen() {
       setError("Couldn't send invite. Please try again.");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleInviteContact = async (row: {
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    accessStatus: string;
+  }) => {
+    if (row.accessStatus !== "not_invited") return;
+    setActionPending(firstContactMethod(row) || row.name);
+    setError(null);
+    try {
+      await inviteReferrer({
+        email: row.email ?? undefined,
+        phone: row.phone ?? undefined,
+        sessionEmail: user?.email,
+      });
+    } catch {
+      Alert.alert("Invite failed", "Please try again in a moment.");
+    } finally {
+      setActionPending(null);
     }
   };
 
@@ -163,6 +287,88 @@ export default function InviteReferrersScreen() {
           </Text>
 
           <View style={components.divider} />
+        </View>
+
+        {/* contact discovery */}
+        <View style={styles.contactsCard}>
+          <View style={styles.contactsHeader}>
+            <View>
+              <Text style={styles.shareCardHeadline}>Find trusted people.</Text>
+              <Text style={styles.shareCardBody}>
+                Sohoist checks your contacts locally, then shows who already has
+                a profile or access to your intro brief.
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[components.secondaryButton, loadingContacts && styles.disabledBtn]}
+            onPress={handleLoadContacts}
+            disabled={loadingContacts}
+            activeOpacity={0.78}
+          >
+            {loadingContacts ? (
+              <ActivityIndicator color={colors.ink} size="small" />
+            ) : (
+              <Text style={components.secondaryButtonText}>
+                {contactsEnabled ? "Refresh contacts" : "Connect contacts"}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {contactsEnabled ? (
+            <View style={styles.contactSummary}>
+              <Text style={styles.contactSummaryText}>
+                {contacts.length} contacts available
+              </Text>
+              {contactMatches === undefined ? (
+                <ActivityIndicator color={colors.mutedTeal} size="small" />
+              ) : null}
+            </View>
+          ) : null}
+
+          {visibleContactMatches.map((row: any) => {
+            const method = firstContactMethod(row);
+            const canInvite = row.accessStatus === "not_invited";
+            const pending = actionPending === (method || row.name);
+
+            return (
+              <View key={`${row.name}-${method}`} style={styles.contactRow}>
+                <View style={styles.contactCopy}>
+                  <Text style={styles.contactName}>{row.sohoistName ?? row.name}</Text>
+                  <Text style={styles.contactMeta} numberOfLines={1}>
+                    {method || "No contact method"}{" "}
+                    {row.alreadyOnSohoist ? "· profile found" : ""}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.contactAction,
+                    canInvite && styles.contactActionInvite,
+                  ]}
+                  onPress={() => handleInviteContact(row)}
+                  disabled={!canInvite || pending}
+                  activeOpacity={0.72}
+                >
+                  {pending ? (
+                    <ActivityIndicator
+                      color={canInvite ? colors.paper : colors.stone}
+                      size="small"
+                    />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.contactActionText,
+                        canInvite && styles.contactActionTextInvite,
+                      ]}
+                    >
+                      {contactAccessLabel(row.accessStatus, row.alreadyOnSohoist)}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            );
+          })}
         </View>
 
         {/* share link — primary method */}
@@ -485,6 +691,81 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     fontSize: 12,
     color: colors.mutedTeal,
+  },
+
+  // contact discovery
+  contactsCard: {
+    backgroundColor: colors.warmIvory,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: "rgba(143, 175, 179, 0.24)",
+    padding: spacing.cardPad,
+    marginBottom: 20,
+    gap: 12,
+  },
+  contactsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  contactSummary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(93, 90, 87, 0.12)",
+    paddingTop: 12,
+  },
+  contactSummaryText: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.stone,
+  },
+  contactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(93, 90, 87, 0.1)",
+    paddingTop: 12,
+  },
+  contactCopy: {
+    flex: 1,
+  },
+  contactName: {
+    fontFamily: fonts.displayMedium,
+    fontSize: 18,
+    color: colors.ink,
+    marginBottom: 2,
+  },
+  contactMeta: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.stone,
+  },
+  contactAction: {
+    minWidth: 96,
+    height: 34,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(245, 239, 230, 0.55)",
+  },
+  contactActionInvite: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  contactActionText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: colors.stone,
+  },
+  contactActionTextInvite: {
+    color: colors.paper,
   },
 
   // circle section header (label + count on same row)

@@ -5,12 +5,19 @@ import { api } from "@packages/backend/convex/_generated/api";
 import { colors } from "../../theme";
 import { useNativeAuth } from "../../auth";
 
+const ADMIN_EMAIL =
+  process.env.EXPO_PUBLIC_ADMIN_EMAIL?.trim().toLowerCase() ??
+  "lois@sf-voice.sh";
+
 export default function AppIndex() {
   const { user } = useNativeAuth();
+  const isAdmin = user?.email.trim().toLowerCase() === ADMIN_EMAIL;
   const application = useQuery(
     api.applications.getMyApplication,
-    user?.email ? { email: user.email } : "skip",
+    user?.email && !isAdmin ? { email: user.email } : "skip",
   );
+
+  if (isAdmin) return <Redirect href="/admin" />;
 
   // loading — convex hasn't resolved yet
   if (application === undefined) {

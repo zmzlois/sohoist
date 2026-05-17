@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import WaitlistForm from "@/components/WaitlistForm";
-
-import heroImage from "../../public/images/friend-gather-hero.png";
-import logoImage from "../../public/images/logo.png";
+import { HeroHeader, heroHeaderLinkStyle } from "@/components/common/heroChrome";
+import { heroOverlay } from "@packages/ui";
+import { webImages } from "@packages/ui/assets/web";
 
 export default function Home() {
   return (
@@ -12,7 +12,7 @@ export default function Home() {
     >
       {/* ── hero image — full bleed ───────────────────────────────────────── */}
       <Image
-        src={heroImage}
+        src={webImages.heroDinner}
         alt="Friends gathered at a candlelit dinner"
         fill
         priority
@@ -24,69 +24,17 @@ export default function Home() {
         style={{
           position: "absolute",
           inset: 0,
-          background: [
-            "linear-gradient(to top,",
-            "  rgba(27,25,23,0.92) 0%,",
-            "  rgba(27,25,23,0.60) 38%,",
-            "  rgba(27,25,23,0.18) 65%,",
-            "  rgba(27,25,23,0.04) 100%",
-            ")",
-          ].join(" "),
+          background: heroOverlay.web.scrim,
         }}
       />
 
-      {/* ── sign in link — top right ──────────────────────────────────────── */}
-      <div style={{ position: "absolute", top: 28, right: 28, zIndex: 20 }}>
-        <Link
-          href="/sign-in"
-          style={{
-            fontFamily: "var(--font-body)",
-            fontSize: 13,
-            fontWeight: 500,
-            color: "#F5EFE6",
-            textDecoration: "none",
-            padding: "7px 16px",
-            borderRadius: 999,
-            backgroundColor: "rgba(43,42,40,0.45)",
-            border: "1px solid rgba(245,239,230,0.18)",
-            backdropFilter: "blur(8px)",
-            display: "inline-block",
-          }}
-        >
-          Sign in →
-        </Link>
-      </div>
-
-      {/* ── brand mark — top left ─────────────────────────────────────────── */}
-      <div
-        style={{
-          position: "absolute",
-          top: "28px",
-          left: "28px",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-        }}
-      >
-        <div
-          style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            overflow: "hidden",
-            flexShrink: 0,
-            boxShadow: "0 2px 12px rgba(0,0,0,0.28)",
-          }}
-        >
-          <Image
-            src={logoImage}
-            alt="Sohoist"
-            width={40}
-            height={40}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        </div>
-      </div>
+      <HeroHeader
+        right={
+          <Link href="/sign-in" style={heroHeaderLinkStyle}>
+            Sign in →
+          </Link>
+        }
+      />
 
       {/* ── hero content — left-centered ─────────────────────────────────── */}
       <div

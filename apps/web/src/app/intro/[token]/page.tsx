@@ -13,7 +13,7 @@ import {
   SectionHeading,
   StatusBadge,
 } from "@/components/member/MemberScaffold";
-import portraitFallback from "../../../../public/images/region-02.png";
+import { webImages } from "@packages/ui/assets/web";
 
 export default function CandidateIntroPage() {
   const params = useParams<{ token: string }>();
@@ -74,14 +74,20 @@ export default function CandidateIntroPage() {
                 style={portraitStyle}
               />
             ) : (
-              <Image src={portraitFallback} alt="" style={portraitStyle} />
+              <Image
+                src={webImages.portraitFallback}
+                alt=""
+                style={portraitStyle}
+              />
             )}
           </PaperCard>
 
           <PaperCard>
             <SectionHeading
               label="Intro context"
-              detail={<StatusBadge>{intro.status.replace(/_/g, " ")}</StatusBadge>}
+              detail={
+                <StatusBadge>{intro.status.replace(/_/g, " ")}</StatusBadge>
+              }
             />
             <h2 style={headlineStyle}>
               {intro.memberHeadline ?? intro.memberName}
@@ -90,11 +96,21 @@ export default function CandidateIntroPage() {
               {[intro.profession, intro.city].filter(Boolean).join(" · ")}
             </p>
             <Brief label="Why this could work" value={intro.whyAFit} />
-            <Brief label="How your referrer knows them" value={intro.howReferrerKnowsThem} />
+            <Brief
+              label="How your referrer knows them"
+              value={intro.howReferrerKnowsThem}
+            />
             <Brief label="About them" value={intro.memberBio} />
             <Brief label="Open to meeting" value={intro.openTo} />
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+                marginTop: 24,
+              }}
+            >
               <button
                 type="button"
                 style={form.primary}
@@ -113,7 +129,11 @@ export default function CandidateIntroPage() {
               </button>
             </div>
 
-            {message ? <p style={{ margin: "16px 0 0", color: palette.teal }}>{message}</p> : null}
+            {message ? (
+              <p style={{ margin: "16px 0 0", color: palette.teal }}>
+                {message}
+              </p>
+            ) : null}
           </PaperCard>
         </div>
       )}

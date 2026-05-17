@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
-  Animated,
   ActivityIndicator,
   Platform,
   StyleSheet,
@@ -10,24 +9,20 @@ import {
   Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from "expo-audio";
 import { useMutation, useAction } from "convex/react";
 import { api } from "@packages/backend/convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, fonts, radius, spacing, shadow } from "../theme";
 import { useNativeAuth } from "../auth";
-
-// expo-av requires a development build — not available in Expo Go
-let Audio: any = null;
-try {
-  Audio = require("expo-av").Audio;
-} catch {
-  // will show "dev build required" when user tries to record
-}
-
-const NEEDS_DEV_BUILD = Audio === null;
+import VoiceInputCard from "../components/VoiceInputCard";
 
 const { width } = Dimensions.get("window");
-const NUM_BARS = 30;
 const TOPICS = [
   "Who you are",
   "What you're looking for",
@@ -42,70 +37,11 @@ export default function VoiceProfileScreen() {
   const { user } = useNativeAuth();
   const generateUploadUrl = useMutation(api.voice.generateUploadUrl);
   const transcribeAndSave = useAction(api.voice.transcribeAndSave);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const [status, setStatus] = useState<Status>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
-  const recordingRef = useRef<any>(null);
-
-  // waveform bar animations
-  const barAnims = useRef(
-    Array.from({ length: NUM_BARS }, () => new Animated.Value(0.08)),
-  ).current;
-
-  // mic circle pulse
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  // ── animate waveform when recording ───────────────────────────────────
-  useEffect(() => {
-    if (status !== "recording") {
-      barAnims.forEach((a) => a.setValue(0.08));
-      return;
-    }
-    const anims = barAnims.map((anim, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay((i * 35) % 180),
-          Animated.timing(anim, {
-            toValue: Math.random() * 0.75 + 0.15,
-            duration: 140 + Math.random() * 220,
-            useNativeDriver: false,
-          }),
-          Animated.timing(anim, {
-            toValue: 0.08,
-            duration: 140 + Math.random() * 220,
-            useNativeDriver: false,
-          }),
-        ]),
-      ),
-    );
-    anims.forEach((a) => a.start());
-    return () => anims.forEach((a) => a.stop());
-  }, [status]);
-
-  // ── mic pulse when recording ───────────────────────────────────────────
-  useEffect(() => {
-    if (status !== "recording") {
-      pulseAnim.setValue(1);
-      return;
-    }
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.07,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, [status]);
 
   // ── elapsed timer ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -120,47 +56,21 @@ export default function VoiceProfileScreen() {
 
   // ── recording controls ─────────────────────────────────────────────────
   async function startRecording() {
-    if (NEEDS_DEV_BUILD) {
-      setErrorMsg(
-        "Voice recording requires a development build. Run `npx expo run:ios` once to enable it.",
-      );
-      setStatus("error");
-      return;
-    }
     try {
-      const { granted } = await Audio.requestPermissionsAsync();
+      const { granted } = await AudioModule.requestRecordingPermissionsAsync();
       if (!granted) {
         setErrorMsg("Microphone permission is required.");
         setStatus("error");
         return;
       }
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
-      const { recording } = await Audio.Recording.createAsync({
-        android: {
-          extension: ".m4a",
-          outputFormat: 2, // MPEG_4
-          audioEncoder: 3, // AAC
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-        },
-        ios: {
-          extension: ".m4a",
-          outputFormat: "aac" as any,
-          audioQuality: 127, // MAX
-          sampleRate: 44100,
-          numberOfChannels: 1,
-          bitRate: 128000,
-          linearPCMBitDepth: 16,
-          linearPCMIsBigEndian: false,
-          linearPCMIsFloat: false,
-        },
-        web: { mimeType: "audio/webm", bitsPerSecond: 128000 },
-      });
-      recordingRef.current = recording;
+
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
       setElapsed(0);
       setStatus("recording");
     } catch (e) {
@@ -170,14 +80,12 @@ export default function VoiceProfileScreen() {
   }
 
   async function stopAndTranscribe() {
-    const rec = recordingRef.current;
-    if (!rec) return;
     setStatus("processing");
 
     try {
-      await rec.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-      const uri = rec.getURI();
+      await audioRecorder.stop();
+      await setAudioModeAsync({ allowsRecording: false });
+      const uri = audioRecorder.uri;
       if (!uri) throw new Error("No recording URI");
 
       // upload to Convex storage
@@ -223,60 +131,21 @@ export default function VoiceProfileScreen() {
         </Text>
       </View>
 
-      {/* ── mic circle ──────────────────────────────────────────────────── */}
-      <View style={styles.micArea}>
-        {/* outer glow ring — visible when recording */}
-        {isRecording && (
-          <Animated.View
-            style={[styles.micRing, { transform: [{ scale: pulseAnim }] }]}
-          />
-        )}
-
-        <Animated.View
-          style={[
-            styles.micCircle,
-            isRecording && styles.micCircleActive,
-            { transform: [{ scale: pulseAnim }] },
-          ]}
-        >
-          <Ionicons
-            name={isRecording ? "mic" : "mic-outline"}
-            size={52}
-            color={isRecording ? colors.mutedTeal : colors.stone}
-          />
-        </Animated.View>
-
-        {/* waveform */}
-        <View style={styles.waveform}>
-          {barAnims.map((anim, i) => (
-            <Animated.View
-              key={i}
-              style={[
-                styles.waveBar,
-                {
-                  height: anim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [3, 44],
-                  }),
-                  opacity: isRecording ? 1 : 0.3,
-                },
-              ]}
-            />
-          ))}
-        </View>
-
-        {/* status label + timer */}
-        <Text style={styles.statusLabel}>
-          {isProcessing
-            ? "Creating your profile…"
+      <VoiceInputCard
+        active={isRecording}
+        disabled={isProcessing}
+        onPress={isRecording ? stopAndTranscribe : startRecording}
+        label={
+          isProcessing
+            ? "Creating your profile..."
             : isRecording
-              ? "Listening…"
-              : NEEDS_DEV_BUILD
-                ? "Requires development build"
-                : "Tap to start speaking"}
-        </Text>
-        {isRecording && <Text style={styles.timer}>{formatTime(elapsed)}</Text>}
-      </View>
+              ? "Listening..."
+              : "Tap to start speaking"
+        }
+        timer={isRecording ? formatTime(elapsed) : undefined}
+        detail="Your voice becomes an editorial intro brief."
+        style={styles.voiceCard}
+      />
 
       {/* ── topics card ─────────────────────────────────────────────────── */}
       <View style={styles.cardWrap}>
@@ -365,62 +234,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  /* mic area */
-  micArea: {
-    alignItems: "center",
+  voiceCard: {
     marginBottom: 24,
-  },
-  micRing: {
-    position: "absolute",
-    width: 148,
-    height: 148,
-    borderRadius: 74,
-    borderWidth: 1,
-    borderColor: "rgba(143, 175, 179, 0.35)",
-    top: -10,
-  },
-  micCircle: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
-    backgroundColor: "rgba(220, 230, 234, 0.28)",
-    borderWidth: 1,
-    borderColor: "rgba(143, 175, 179, 0.3)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  micCircleActive: {
-    backgroundColor: "rgba(143, 175, 179, 0.18)",
-    borderColor: "rgba(143, 175, 179, 0.55)",
-  },
-
-  /* waveform */
-  waveform: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 48,
-    gap: 3,
-    marginBottom: 12,
-  },
-  waveBar: {
-    width: 3,
-    borderRadius: 2,
-    backgroundColor: colors.mutedTeal,
-  },
-
-  statusLabel: {
-    fontFamily: fonts.displayItalic,
-    fontSize: 16,
-    color: colors.stone,
-    textAlign: "center",
-  },
-  timer: {
-    fontFamily: fonts.mono,
-    fontSize: 13,
-    color: colors.stone,
-    marginTop: 4,
-    textAlign: "center",
   },
 
   /* topics card — slight tilt for paper feel */

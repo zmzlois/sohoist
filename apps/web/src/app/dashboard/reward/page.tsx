@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@packages/backend/convex/_generated/api";
@@ -13,7 +13,7 @@ import {
   SectionHeading,
   StatusBadge,
 } from "@/components/member/MemberScaffold";
-import rewardCardImage from "../../../../public/images/card.png";
+import { webImages } from "@packages/ui/assets/web";
 
 type DepositTier = "minimum" | "half" | "full";
 
@@ -43,11 +43,10 @@ export default function RewardPoolPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsAcceptedDraft, setTermsAccepted] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    if (rewardPool?.termsAcceptedAt) setTermsAccepted(true);
-  }, [rewardPool?.termsAcceptedAt]);
+  const termsAccepted =
+    termsAcceptedDraft ?? Boolean(rewardPool?.termsAcceptedAt);
 
   const values =
     draft ??
@@ -119,7 +118,12 @@ export default function RewardPoolPage() {
           }
         />
 
-        <Image src={rewardCardImage} alt="" style={rewardImageStyle} priority />
+        <Image
+          src={webImages.rewardCard}
+          alt=""
+          style={rewardImageStyle}
+          priority
+        />
 
         <div style={form.grid}>
           <div>
@@ -238,9 +242,7 @@ export default function RewardPoolPage() {
 
           {error ? <p style={form.error}>{error}</p> : null}
           {saved ? (
-            <p style={{ margin: 0, color: palette.teal }}>
-              Reward pool saved.
-            </p>
+            <p style={{ margin: 0, color: palette.teal }}>Reward pool saved.</p>
           ) : null}
 
           <button

@@ -1,45 +1,112 @@
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
-import { useQuery } from "convex/react";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  AudioModule,
+  RecordingPresets,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from "expo-audio";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@packages/backend/convex/_generated/api";
-import type { Id } from "@packages/backend/convex/_generated/dataModel";
 import { colors, components, fonts, radius, spacing, shadow } from "../theme";
 import { useNativeAuth } from "../auth";
+import VoiceInputCard from "../components/VoiceInputCard";
+
+const ADMIN_EMAIL =
+  process.env.EXPO_PUBLIC_ADMIN_EMAIL?.trim().toLowerCase() ??
+  "lois@sf-voice.sh";
+const VOICE_PROMPTS = [
+  "What kind of relationship would feel steady and real right now?",
+  "What do your closest friends understand about your taste?",
+  "Who should your referrers absolutely not send your way?",
+];
+type VoiceSheetStatus = "idle" | "recording" | "processing" | "error";
+
+function truncateIntro(value: string, maxLength = 126) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength).trim()}...`;
+}
+
+function formatVoiceTime(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function routeForStep(index: number) {
+  if (index === 1) return "voice";
+  if (index === 2) return "/photo-sketch";
+  if (index === 3) return "/invite-referrers";
+  return "/reward-pool";
+}
 
 // ─── step indicator dot ───────────────────────────────────────────────────────
 
 type StepDotState = "active" | "done" | "empty";
 
 interface StepRowProps {
+  index: number;
   label: string;
   state: StepDotState;
+  onPress?: () => void;
 }
 
-function StepRow({ label, state }: StepRowProps) {
-  const dotColor =
-    state === "active"
-      ? colors.mutedTeal
-      : state === "done"
-        ? colors.ink
-        : colors.borderGraphite;
+function StepRow({ index, label, state, onPress }: StepRowProps) {
+  const isTouchable = Boolean(onPress);
 
   return (
-    <View style={stepStyles.row}>
-      <View style={[stepStyles.dot, { backgroundColor: dotColor }]} />
+    <TouchableOpacity
+      style={[
+        stepStyles.row,
+        state === "active" && stepStyles.rowActive,
+        !isTouchable && stepStyles.rowDisabled,
+      ]}
+      onPress={onPress}
+      disabled={!isTouchable}
+      activeOpacity={0.72}
+    >
+      <View
+        style={[
+          stepStyles.indexBubble,
+          state === "done" && stepStyles.indexBubbleDone,
+          state === "active" && stepStyles.indexBubbleActive,
+        ]}
+      >
+        <Text
+          style={[
+            stepStyles.indexText,
+            state !== "empty" && stepStyles.indexTextActive,
+          ]}
+        >
+          {index}
+        </Text>
+      </View>
       <Text
-        style={[stepStyles.label, state === "active" && stepStyles.labelActive]}
+        style={[
+          stepStyles.label,
+          state === "active" && stepStyles.labelActive,
+          state === "done" && stepStyles.labelDone,
+        ]}
       >
         {label}
       </Text>
-    </View>
+      {isTouchable ? (
+        <Ionicons name="chevron-forward" size={14} color={colors.stone} />
+      ) : null}
+    </TouchableOpacity>
   );
 }
 
@@ -47,22 +114,59 @@ const stepStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    minHeight: 44,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+    backgroundColor: "rgba(239, 231, 220, 0.46)",
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  rowActive: {
+    backgroundColor: "rgba(220, 230, 234, 0.58)",
+    borderWidth: 1,
+    borderColor: "rgba(143, 175, 179, 0.34)",
+  },
+  rowDisabled: {
+    opacity: 0.48,
+  },
+  indexBubble: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 10,
+    backgroundColor: colors.paper,
+  },
+  indexBubbleDone: {
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
+  },
+  indexBubbleActive: {
+    backgroundColor: colors.mutedTeal,
+    borderColor: "rgba(143, 175, 179, 0.44)",
+  },
+  indexText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 11,
+    color: colors.stone,
+  },
+  indexTextActive: {
+    color: colors.paper,
   },
   label: {
+    flex: 1,
     fontFamily: fonts.body,
-    fontSize: 13,
+    fontSize: 12,
     color: colors.stone,
   },
   labelActive: {
     color: colors.ink,
     fontFamily: fonts.bodyMedium,
+  },
+  labelDone: {
+    color: colors.ink,
   },
 });
 
@@ -113,11 +217,221 @@ const quickStyles = StyleSheet.create({
   },
 });
 
+// ─── trusted referrer row ────────────────────────────────────────────────────
+
+interface TrustedReferrerRowProps {
+  name: string;
+  intro: string;
+  status: string;
+  hasVoiceNote: boolean;
+  onPlay: () => void;
+}
+
+function TrustedReferrerRow({
+  name,
+  intro,
+  status,
+  hasVoiceNote,
+  onPlay,
+}: TrustedReferrerRowProps) {
+  return (
+    <View style={referrerStyles.row}>
+      <TouchableOpacity
+        style={[
+          referrerStyles.playButton,
+          !hasVoiceNote && referrerStyles.playButtonDisabled,
+        ]}
+        onPress={onPlay}
+        activeOpacity={hasVoiceNote ? 0.75 : 1}
+      >
+        <Ionicons
+          name="play"
+          size={14}
+          color={hasVoiceNote ? colors.ink : "rgba(93, 90, 87, 0.38)"}
+        />
+      </TouchableOpacity>
+      <View style={referrerStyles.copy}>
+        <View style={referrerStyles.titleRow}>
+          <Text style={referrerStyles.name}>{name}</Text>
+          <Text style={referrerStyles.status}>{status}</Text>
+        </View>
+        <Text style={referrerStyles.intro}>{truncateIntro(intro)}</Text>
+      </View>
+    </View>
+  );
+}
+
+const referrerStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    gap: 12,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(93, 90, 87, 0.12)",
+  },
+  playButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(220, 230, 234, 0.72)",
+    borderWidth: 1,
+    borderColor: "rgba(143, 175, 179, 0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  playButtonDisabled: {
+    backgroundColor: "rgba(93, 90, 87, 0.05)",
+    borderColor: "rgba(93, 90, 87, 0.12)",
+  },
+  copy: {
+    flex: 1,
+  },
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 4,
+  },
+  name: {
+    flex: 1,
+    fontFamily: fonts.displayMedium,
+    fontSize: 18,
+    color: colors.ink,
+  },
+  status: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    letterSpacing: 0.7,
+    textTransform: "uppercase",
+    color: colors.mutedTeal,
+    marginTop: 4,
+  },
+  intro: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.stone,
+  },
+});
+
+// ─── home navigation ─────────────────────────────────────────────────────────
+
+interface HomeNavProps {
+  onProfile: () => void;
+  onSettings: () => void;
+}
+
+function HomeNav({ onProfile, onSettings }: HomeNavProps) {
+  return (
+    <View style={navStyles.wrap}>
+      <View style={[navStyles.item, navStyles.itemActive]}>
+        <Ionicons name="home-outline" size={16} color={colors.ink} />
+        <Text style={[navStyles.label, navStyles.labelActive]}>Home</Text>
+      </View>
+      <TouchableOpacity
+        style={navStyles.item}
+        onPress={onProfile}
+        activeOpacity={0.72}
+      >
+        <Ionicons name="person-outline" size={16} color={colors.stone} />
+        <Text style={navStyles.label}>Profile</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={navStyles.item}
+        onPress={onSettings}
+        activeOpacity={0.72}
+      >
+        <Ionicons name="settings-outline" size={16} color={colors.stone} />
+        <Text style={navStyles.label}>Settings</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const navStyles = StyleSheet.create({
+  wrap: {
+    flexDirection: "row",
+    backgroundColor: "rgba(239, 231, 220, 0.72)",
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    padding: 4,
+    marginBottom: 16,
+  },
+  item: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: radius.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  itemActive: {
+    backgroundColor: colors.warmIvory,
+    ...shadow.subtle,
+  },
+  label: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 12,
+    color: colors.stone,
+  },
+  labelActive: {
+    color: colors.ink,
+  },
+});
+
+interface ProgressStepsProps {
+  states: [StepDotState, StepDotState, StepDotState, StepDotState];
+  onStepPress: (index: number) => void;
+}
+
+function ProgressSteps({ states, onStepPress }: ProgressStepsProps) {
+  const labels = [
+    "Create your intro brief",
+    "Add your photo",
+    "Invite trusted referrers",
+    "Reward pool (optional)",
+  ];
+
+  return (
+    <View style={styles.stepsWrap}>
+      {labels.map((label, index) => {
+        const state = states[index];
+        return (
+          <StepRow
+            key={label}
+            index={index + 1}
+            label={label}
+            state={state}
+            onPress={
+              state === "empty" && index !== 3
+                ? undefined
+                : () => onStepPress(index + 1)
+            }
+          />
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── main screen ──────────────────────────────────────────────────────────────
 
 export default function MemberHomeScreen() {
   const router = useRouter();
-  const { signOut, user } = useNativeAuth();
+  const { user } = useNativeAuth();
+  const createShareLink = useMutation(api.referrers.createShareLink);
+  const generateUploadUrl = useMutation(api.voice.generateUploadUrl);
+  const transcribeAndSave = useAction(api.voice.transcribeAndSave);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [sharing, setSharing] = useState(false);
+  const [voiceSheetOpen, setVoiceSheetOpen] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<VoiceSheetStatus>("idle");
+  const [voiceElapsed, setVoiceElapsed] = useState(0);
+  const [voiceError, setVoiceError] = useState("");
+  const isAdmin = user?.email.trim().toLowerCase() === ADMIN_EMAIL;
 
   const profile = useQuery(
     api.profile.getMyProfile,
@@ -143,6 +457,17 @@ export default function MemberHomeScreen() {
     api.referrers.getReferrerInvitesForMe,
     user?.email ? { email: user.email } : "skip",
   );
+  const isVoiceRecording = voiceStatus === "recording";
+  const isVoiceProcessing = voiceStatus === "processing";
+
+  useEffect(() => {
+    if (!isVoiceRecording) return;
+    const timer = setInterval(
+      () => setVoiceElapsed((seconds) => seconds + 1),
+      1000,
+    );
+    return () => clearInterval(timer);
+  }, [isVoiceRecording]);
 
   // show a full-screen loader while core queries are still resolving
   if (profile === undefined || referrers === undefined) {
@@ -162,6 +487,143 @@ export default function MemberHomeScreen() {
   ).length;
   const referrerPortalCount = referrerInvites?.length ?? 0;
 
+  async function startVoiceRecording() {
+    try {
+      const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+      if (!granted) {
+        setVoiceError("Microphone permission is required.");
+        setVoiceStatus("error");
+        return;
+      }
+
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+      setVoiceElapsed(0);
+      setVoiceError("");
+      setVoiceStatus("recording");
+    } catch {
+      setVoiceError("Could not start recording. Please try again.");
+      setVoiceStatus("error");
+    }
+  }
+
+  async function stopVoiceRecording() {
+    setVoiceStatus("processing");
+
+    try {
+      await audioRecorder.stop();
+      await setAudioModeAsync({ allowsRecording: false });
+      const uri = audioRecorder.uri;
+      if (!uri) throw new Error("No recording URI");
+
+      const uploadUrl = await generateUploadUrl();
+      const audioRes = await fetch(uri);
+      const audioBlob = await audioRes.blob();
+      const uploadRes = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": "audio/mp4" },
+        body: audioBlob,
+      });
+      const { storageId } = await uploadRes.json();
+
+      await transcribeAndSave({ storageId, email: user?.email });
+
+      setVoiceSheetOpen(false);
+      setVoiceStatus("idle");
+      setVoiceElapsed(0);
+      Alert.alert("Profile updated", "Your intro brief was refreshed.");
+    } catch {
+      setVoiceError("Transcription failed. Please try again.");
+      setVoiceStatus("error");
+    }
+  }
+
+  function openVoiceSheet() {
+    setVoiceSheetOpen(true);
+    setVoiceError("");
+  }
+
+  function closeVoiceSheet() {
+    if (isVoiceProcessing || isVoiceRecording) return;
+    setVoiceSheetOpen(false);
+    setVoiceStatus("idle");
+    setVoiceElapsed(0);
+    setVoiceError("");
+  }
+
+  function handleVoiceCardPress() {
+    if (isVoiceRecording) {
+      void stopVoiceRecording();
+      return;
+    }
+    void startVoiceRecording();
+  }
+
+  function goToStep(index: number) {
+    const route = routeForStep(index);
+    if (route === "voice") {
+      openVoiceSheet();
+      return;
+    }
+    router.push(route as any);
+  }
+
+  async function handleShareProfile() {
+    if (!user?.email || sharing) return;
+    setSharing(true);
+    try {
+      const token = await createShareLink({ email: user.email });
+      const url = Linking.createURL(`/invite/${token}`);
+      await Share.share({
+        message: `I’d love your help making thoughtful introductions on Sohoist: ${url}`,
+        url,
+      });
+    } catch (error) {
+      Alert.alert(
+        "Share unavailable",
+        error instanceof Error
+          ? error.message
+          : "Please try again in a moment.",
+      );
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function handlePlayReferrerNote(
+    referrerName: string,
+    voiceNoteUrl?: string | null,
+  ) {
+    if (!voiceNoteUrl) {
+      Alert.alert(
+        "No voice note yet",
+        "This referrer has not attached a voice note yet.",
+      );
+      return;
+    }
+
+    if (voiceNoteUrl.startsWith("demo://")) {
+      Alert.alert(
+        "Voice note",
+        `${referrerName} left a short note for this introduction.`,
+      );
+      return;
+    }
+
+    const canOpen = await Linking.canOpenURL(voiceNoteUrl);
+    if (canOpen) {
+      await Linking.openURL(voiceNoteUrl);
+      return;
+    }
+
+    Alert.alert("Voice note unavailable", "This note cannot be opened here.");
+  }
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -176,16 +638,36 @@ export default function MemberHomeScreen() {
         </View>
 
         <TouchableOpacity
-          onPress={() => router.push("/ghost-mode")}
+          onPress={() => router.push(isAdmin ? "/admin" : "/ghost-mode")}
           activeOpacity={0.7}
         >
-          <View style={[components.badge, profile?.ghostMode ? styles.ghostBadgeOn : styles.ghostBadgeOff]}>
+          <View
+            style={[
+              components.badge,
+              isAdmin
+                ? styles.adminBadge
+                : profile?.ghostMode
+                  ? styles.ghostBadgeOn
+                  : styles.ghostBadgeOff,
+            ]}
+          >
             <Text style={components.badgeText}>
-              {profile?.ghostMode ? "GHOST MODE" : "PRIVACY"}
+              {isAdmin
+                ? "ADMIN"
+                : profile?.ghostMode
+                  ? "GHOST MODE"
+                  : "PRIVACY"}
             </Text>
           </View>
         </TouchableOpacity>
       </View>
+
+      {hasInterview ? (
+        <HomeNav
+          onProfile={() => router.push("/intro-brief")}
+          onSettings={() => router.push("/settings" as any)}
+        />
+      ) : null}
 
       {/* ── body ───────────────────────────────────────────────────────────── */}
 
@@ -203,25 +685,18 @@ export default function MemberHomeScreen() {
               about 5 minutes.
             </Text>
 
-            <View style={components.divider} />
-
-            <TouchableOpacity
-              style={components.primaryButton}
-              onPress={() => router.push("/voice-profile")}
-              activeOpacity={0.8}
-            >
-              <Text style={components.primaryButtonText}>
-                Start voice profile →
-              </Text>
-            </TouchableOpacity>
+            <VoiceInputCard
+              label="Tap to start speaking"
+              detail="A quiet voice conversation becomes your private intro brief."
+              onPress={openVoiceSheet}
+              style={styles.voiceCard}
+            />
           </View>
 
-          <View style={styles.stepsWrap}>
-            <StepRow label="Create your intro brief" state="active" />
-            <StepRow label="Add your photo" state="empty" />
-            <StepRow label="Invite trusted referrers" state="empty" />
-            <StepRow label="Set up your reward pool" state="empty" />
-          </View>
+          <ProgressSteps
+            states={["active", "empty", "empty", "empty"]}
+            onStepPress={goToStep}
+          />
         </>
       )}
 
@@ -235,7 +710,8 @@ export default function MemberHomeScreen() {
 
             <Text style={styles.cardHeadline}>Add your photo.</Text>
             <Text style={styles.cardBody}>
-              We'll turn it into a private pencil sketch portrait. Referrers see the sketch — your photo stays private by default.
+              We'll turn it into a private pencil sketch portrait. Referrers see
+              the sketch — your photo stays private by default.
             </Text>
 
             <View style={components.divider} />
@@ -245,23 +721,19 @@ export default function MemberHomeScreen() {
               onPress={() => router.push("/photo-sketch")}
               activeOpacity={0.8}
             >
-              <Text style={components.primaryButtonText}>
-                Add photo →
-              </Text>
+              <Text style={components.primaryButtonText}>Add photo →</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.stepsWrap}>
-            <StepRow label="Create your intro brief" state="done" />
-            <StepRow label="Add your photo" state="active" />
-            <StepRow label="Invite trusted referrers" state="empty" />
-            <StepRow label="Set up your reward pool" state="empty" />
-          </View>
+          <ProgressSteps
+            states={["done", "active", "empty", "empty"]}
+            onStepPress={goToStep}
+          />
         </>
       )}
 
       {/* state b: has interview + sketch but no referrers */}
-      {hasInterview && hasSketch && !hasReferrers && !hasRewardPool && (
+      {hasInterview && hasSketch && !hasReferrers && (
         <>
           <View style={components.paperCard}>
             <View style={[components.badge, styles.cardBadge]}>
@@ -287,51 +759,81 @@ export default function MemberHomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.stepsWrap}>
-            <StepRow label="Create your intro brief" state="done" />
-            <StepRow label="Add your photo" state="done" />
-            <StepRow label="Invite trusted referrers" state="active" />
-            <StepRow label="Set up your reward pool" state="empty" />
-          </View>
+          <ProgressSteps
+            states={[
+              "done",
+              "done",
+              "active",
+              hasRewardPool ? "done" : "empty",
+            ]}
+            onStepPress={goToStep}
+          />
         </>
       )}
 
-      {/* state b2: has interview + sketch + referrers but no reward pool yet */}
-      {hasInterview && hasSketch && hasReferrers && !hasRewardPool && (
+      {/* state c: has referrers — show the member dashboard; reward pool is optional */}
+      {hasInterview && hasReferrers && (
         <>
-          <View style={components.paperCard}>
-            <View style={[components.badge, styles.cardBadge]}>
-              <Text style={components.badgeText}>STEP 4 OF 4</Text>
-            </View>
-            <Text style={styles.cardHeadline}>Set up your reward pool.</Text>
-            <Text style={styles.cardBody}>
-              A private thank-you for the friend who makes a meaningful
-              introduction. Funds release only after a verified 6-month
-              relationship.
-            </Text>
-            <View style={components.divider} />
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionLabel}>TRUSTED REFERRERS</Text>
             <TouchableOpacity
-              style={components.primaryButton}
-              onPress={() => router.push("/reward-pool")}
-              activeOpacity={0.8}
+              onPress={() => router.push("/invite-referrers")}
+              activeOpacity={0.7}
             >
-              <Text style={components.primaryButtonText}>
-                Create reward pool →
-              </Text>
+              <Text style={styles.editLink}>Manage</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.stepsWrap}>
-            <StepRow label="Create your intro brief" state="done" />
-            <StepRow label="Add your photo" state="done" />
-            <StepRow label="Invite trusted referrers" state="done" />
-            <StepRow label="Set up your reward pool" state="active" />
-          </View>
-        </>
-      )}
 
-      {/* state c: fully set up — show the member dashboard */}
-      {hasInterview && hasReferrers && hasRewardPool && (
-        <>
+          <View style={[components.paperCard, styles.referrerCard]}>
+            {(referrers ?? []).slice(0, 4).map((referrer: any) => (
+              <TrustedReferrerRow
+                key={referrer._id}
+                name={referrer.referrerName}
+                intro={referrer.introPreview}
+                status={referrer.status}
+                hasVoiceNote={Boolean(referrer.voiceNoteUrl)}
+                onPlay={() =>
+                  handlePlayReferrerNote(
+                    referrer.referrerName,
+                    referrer.voiceNoteUrl,
+                  )
+                }
+              />
+            ))}
+          </View>
+
+          <VoiceInputCard
+            label="Update your profile by voice"
+            detail="The fastest way to refresh your intro brief without turning it into a form."
+            onPress={openVoiceSheet}
+            style={styles.dashboardVoiceCard}
+          />
+
+          <TouchableOpacity
+            style={[components.primaryButton, styles.shareButton]}
+            onPress={handleShareProfile}
+            disabled={sharing}
+            activeOpacity={0.82}
+          >
+            <Ionicons name="share-outline" size={18} color={colors.paper} />
+            <Text style={components.primaryButtonText}>
+              {sharing ? "Preparing..." : "Share my profile"}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.quickRow}>
+            <QuickActionCard
+              count={String(referrers?.length ?? 0)}
+              label="Referrers"
+              onPress={() => router.push("/invite-referrers")}
+            />
+            <QuickActionCard
+              count={String(activeIntroCount)}
+              label="Active Intros"
+              onPress={() => router.push("/intro-room")}
+            />
+          </View>
+
           {/* mini brief card */}
           <View style={[components.paperCard, styles.briefCard]}>
             <View style={styles.briefCardHeader}>
@@ -362,20 +864,6 @@ export default function MemberHomeScreen() {
                 ? "Ghost mode — hidden"
                 : "Visible to referrers only"}
             </Text>
-          </View>
-
-          {/* quick actions row */}
-          <View style={styles.quickRow}>
-            <QuickActionCard
-              count={String(referrers?.length ?? 0)}
-              label="Referrers"
-              onPress={() => router.push("/invite-referrers")}
-            />
-            <QuickActionCard
-              count={String(activeIntroCount)}
-              label="Active Intros"
-              onPress={() => router.push("/intro-room")}
-            />
           </View>
 
           {referrerPortalCount > 0 ? (
@@ -414,14 +902,62 @@ export default function MemberHomeScreen() {
         </>
       )}
 
-      {/* ── footer sign-out ────────────────────────────────────────────────── */}
-      <TouchableOpacity
-        style={styles.signOutWrap}
-        onPress={() => signOut()}
-        activeOpacity={0.6}
+      <Modal
+        visible={voiceSheetOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={closeVoiceSheet}
       >
-        <Text style={styles.signOutText}>Sign out</Text>
-      </TouchableOpacity>
+        <Pressable style={styles.sheetBackdrop} onPress={closeVoiceSheet} />
+        <View style={styles.voiceSheet}>
+          <View style={styles.sheetGrabber} />
+          <View style={styles.sheetHeader}>
+            <View>
+              <Text style={styles.sheetTitle}>Talk to Sohoist.</Text>
+              <Text style={styles.sheetSubtitle}>
+                Update your profile from here.
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.sheetClose}
+              onPress={closeVoiceSheet}
+              activeOpacity={0.72}
+            >
+              <Ionicons name="close" size={18} color={colors.stone} />
+            </TouchableOpacity>
+          </View>
+
+          <VoiceInputCard
+            active={isVoiceRecording}
+            disabled={isVoiceProcessing}
+            label={
+              isVoiceProcessing
+                ? "Creating your update..."
+                : isVoiceRecording
+                  ? "Listening..."
+                  : "Tap to speak"
+            }
+            timer={isVoiceRecording ? formatVoiceTime(voiceElapsed) : undefined}
+            detail="Speak naturally. The agent will turn it into profile context."
+            onPress={handleVoiceCardPress}
+            style={styles.sheetVoiceCard}
+          />
+
+          <View style={styles.promptCard}>
+            <Text style={styles.promptTitle}>You can talk about:</Text>
+            {VOICE_PROMPTS.map((prompt) => (
+              <View key={prompt} style={styles.promptRow}>
+                <Text style={styles.promptDot}>•</Text>
+                <Text style={styles.promptText}>{prompt}</Text>
+              </View>
+            ))}
+          </View>
+
+          {voiceStatus === "error" ? (
+            <Text style={styles.voiceError}>{voiceError}</Text>
+          ) : null}
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -491,7 +1027,11 @@ const styles = StyleSheet.create({
   /* steps indicator */
   stepsWrap: {
     marginTop: 20,
-    paddingHorizontal: 4,
+    padding: 8,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: "rgba(93, 90, 87, 0.12)",
+    backgroundColor: "rgba(239, 231, 220, 0.38)",
   },
 
   /* mini brief card */
@@ -540,6 +1080,19 @@ const styles = StyleSheet.create({
   referrerPortalButton: {
     marginBottom: 24,
   },
+  referrerCard: {
+    paddingTop: 2,
+    paddingBottom: 2,
+    marginBottom: 14,
+  },
+  dashboardVoiceCard: {
+    marginBottom: 12,
+  },
+  shareButton: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 12,
+  },
 
   /* brief section */
   sectionHeader: {
@@ -578,16 +1131,110 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(220, 230, 234, 0.72)",
     borderColor: "rgba(143, 175, 179, 0.3)",
   },
-
-  /* sign out */
-  signOutWrap: {
-    marginTop: 32,
-    alignItems: "center",
+  adminBadge: {
+    backgroundColor: "rgba(214, 181, 109, 0.18)",
+    borderColor: "rgba(122, 92, 20, 0.22)",
   },
-  signOutText: {
+  voiceCard: {
+    marginTop: 8,
+  },
+
+  sheetBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(43, 42, 40, 0.28)",
+  },
+  voiceSheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    maxHeight: "86%",
+    backgroundColor: colors.paper,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    paddingHorizontal: spacing.screenH,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === "ios" ? 34 : 22,
+    ...shadow.elevated,
+  },
+  sheetGrabber: {
+    width: 42,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(93, 90, 87, 0.22)",
+    alignSelf: "center",
+    marginBottom: 18,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 16,
+    marginBottom: 14,
+  },
+  sheetTitle: {
+    fontFamily: fonts.displayMedium,
+    fontSize: 28,
+    color: colors.ink,
+    letterSpacing: -0.4,
+  },
+  sheetSubtitle: {
     fontFamily: fonts.body,
     fontSize: 13,
     color: colors.stone,
-    opacity: 0.55,
+    marginTop: 3,
+  },
+  sheetClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.warmIvory,
+  },
+  sheetVoiceCard: {
+    marginBottom: 12,
+  },
+  promptCard: {
+    backgroundColor: colors.warmIvory,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderSoft,
+    padding: 16,
+  },
+  promptTitle: {
+    fontFamily: fonts.displayItalic,
+    fontSize: 18,
+    color: colors.ink,
+    marginBottom: 8,
+  },
+  promptRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 6,
+  },
+  promptDot: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.mutedTeal,
+    marginTop: 1,
+  },
+  promptText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.stone,
+  },
+  voiceError: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: "#C0392B",
+    textAlign: "center",
+    marginTop: 12,
   },
 });

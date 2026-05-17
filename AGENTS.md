@@ -21,7 +21,8 @@ This file is for AI coding agents (Cursor, Copilot, Claude, Codex, etc.) operati
 ## Priority 
 - We prioritise assets and features for `apps/native` but `apps/web` should also be considered. 
 - `apps/web`'s design should also be mobile focused 
-- 
+- This is a web + mobile monorepo. Share UI assets, brand tokens, copy constants, and reusable UI decisions through `packages/` as much as possible before duplicating them in `apps/web` or `apps/native`.
+- If a logo, illustration, icon, color, typography value, or core component is needed by both web and mobile, put the shared source in `packages/assets` or `packages/ui` and consume it from both apps. App-local copies should be temporary or platform-specific only.
 
 ## Session & Memory Rules
 
@@ -288,6 +289,8 @@ Core style: watercolor warmth + pencil-sketch intimacy + private-club restraint 
 
 ## Existing Assets (`packages/assets/`)
 
+`packages/assets/` is the canonical source for shared brand imagery. Before adding app-local images under `apps/web/public/` or `apps/native/src/assets/`, check whether the asset already exists here and use the shared file when possible.
+
 | File | Description | Use for |
 |---|---|---|
 | `friend-gather-hero.png` | Friends at candlelit dinner, watercolor + network lines | Hero section, social posts |
@@ -386,6 +389,8 @@ Do not build toward these patterns — they are antithetical to the product:
 ---
 
 ## Implementation Notes
+
+Shared UI and brand primitives should live in `packages/ui` when they need to stay aligned across web and native. Keep this package small and platform-aware: shared tokens, copy, asset references, and headless helpers first; platform-specific React DOM or React Native rendering can stay in each app unless a shared abstraction is clearly worth it.
 
 Design tokens live in two canonical files — keep them in sync:
 - **Web CSS**: `apps/web/src/app/globals.css` — CSS custom properties, `@theme` block, component classes (`.paper-card`, `.primary-button`, `.badge`, `.text-display`, `.pencil-divider`, etc.)

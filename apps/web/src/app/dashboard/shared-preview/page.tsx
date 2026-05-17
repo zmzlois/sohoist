@@ -14,11 +14,7 @@ import {
   SectionHeading,
   StatusBadge,
 } from "@/components/member/MemberScaffold";
-import logoMark from "../../../../public/images/logo.png";
-import portraitFallback from "../../../../public/images/region-02.png";
-import noteImage from "../../../../public/images/region-01.png";
-import paperNote from "../../../../public/images/region-06.png";
-import networkMap from "../../../../public/images/network-map.png";
+import { webImages } from "@packages/ui/assets/web";
 
 const DEFAULT_MESSAGE =
   "I'm using Sohoist for private introductions. If someone comes to mind who you genuinely think I'd click with, I'd love your referral.";
@@ -42,7 +38,8 @@ export default function SharedProfilePreviewPage() {
 
   const rewardLabel = useMemo(() => {
     if (!rewardPool) return "Reward not created";
-    if (profile?.hideRewardAmount || rewardPool.hideAmount) return "Reward funded";
+    if (profile?.hideRewardAmount || rewardPool.hideAmount)
+      return "Reward funded";
     return `$${Math.round(rewardPool.amount / 100)} thank-you reward`;
   }, [profile?.hideRewardAmount, rewardPool]);
 
@@ -75,7 +72,12 @@ export default function SharedProfilePreviewPage() {
           <PaperCard style={previewShellStyle}>
             <div style={previewHeaderStyle}>
               <div style={brandStyle}>
-                <Image src={logoMark} alt="" style={logoStyle} priority />
+                <Image
+                  src={webImages.logoMark}
+                  alt=""
+                  style={logoStyle}
+                  priority
+                />
                 <span>
                   <strong>Sohoist</strong>
                   <small>Private intro brief</small>
@@ -99,7 +101,7 @@ export default function SharedProfilePreviewPage() {
                   />
                 ) : (
                   <Image
-                    src={portraitFallback}
+                    src={webImages.portraitFallback}
                     alt=""
                     style={portraitStyle}
                     priority
@@ -140,7 +142,9 @@ export default function SharedProfilePreviewPage() {
             <div style={briefColumnsStyle}>
               <PreviewSection
                 label="Who I am"
-                value={profile.bio ?? "Create your voice brief to fill this in."}
+                value={
+                  profile.bio ?? "Create your voice brief to fill this in."
+                }
               />
               <PreviewSection
                 label="Who I am looking for"
@@ -163,10 +167,18 @@ export default function SharedProfilePreviewPage() {
           <div style={sideStackStyle}>
             <PaperCard>
               <SectionHeading label="Share controls" />
-              <Image src={noteImage} alt="" style={noteStyle} />
+              <Image
+                src={webImages.noteThroughFriends}
+                alt=""
+                style={noteStyle}
+              />
               <p style={sideCopyStyle}>{DEFAULT_MESSAGE}</p>
               <div style={actionsStyle}>
-                <button type="button" onClick={copyMessage} style={form.secondary}>
+                <button
+                  type="button"
+                  onClick={copyMessage}
+                  style={form.secondary}
+                >
                   {copied ? "Copied" : "Copy message"}
                 </button>
                 <Link href="/dashboard/referrers/invite" style={form.primary}>
@@ -176,7 +188,11 @@ export default function SharedProfilePreviewPage() {
             </PaperCard>
 
             <PaperCard style={paperCardStyle}>
-              <Image src={paperNote} alt="" style={paperBackgroundStyle} />
+              <Image
+                src={webImages.paperNote}
+                alt=""
+                style={paperBackgroundStyle}
+              />
               <div style={termsOverlayStyle}>
                 <SectionHeading
                   label="What viewers see"
@@ -186,13 +202,15 @@ export default function SharedProfilePreviewPage() {
                   <li>They see the sketch, never the original photo.</li>
                   <li>They must sign in before accepting the invite.</li>
                   <li>You can revoke access from the trusted circle screen.</li>
-                  <li>The reward appears as funded if the exact amount is hidden.</li>
+                  <li>
+                    The reward appears as funded if the exact amount is hidden.
+                  </li>
                 </ul>
               </div>
             </PaperCard>
 
             <PaperCard style={{ padding: 0, overflow: "hidden" }}>
-              <Image src={networkMap} alt="" style={networkStyle} />
+              <Image src={webImages.networkMap} alt="" style={networkStyle} />
             </PaperCard>
           </div>
         </div>

@@ -68,7 +68,10 @@ export default function PhotoSketchScreen() {
   const [visibility, setVisibility] = useState<PhotoVisibility>("sketch_only");
   const [savingVisibility, setSavingVisibility] = useState(false);
 
-  const hasExistingSketch = Boolean(assets?.sketch?.url);
+  const sourcePhotoStorageId = uploadedStorageId ?? assets?.photo?.storageId ?? null;
+  const visibleSketchUrl = sketchUrl ?? assets?.sketch?.url ?? null;
+  const hasPhotoSource = Boolean(sourcePhotoStorageId);
+  const hasExistingSketch = Boolean(visibleSketchUrl);
 
   async function pickPhoto() {
     if (NEEDS_DEV_BUILD) {
@@ -120,6 +123,7 @@ export default function PhotoSketchScreen() {
 
       await savePhoto({ storageId, email: user?.email });
       setUploadedStorageId(storageId);
+      setSketchUrl(null);
       setStatus("uploaded");
     } catch {
       setErrorMsg("Upload failed. Please try again.");
@@ -128,17 +132,16 @@ export default function PhotoSketchScreen() {
   }
 
   async function handleGenerateSketch() {
-    if (!uploadedStorageId) return;
+    if (!sourcePhotoStorageId) return;
     setStatus("generating");
     setErrorMsg("");
     try {
-      await generateSketch({
-        photoStorageId: uploadedStorageId,
+      const generated = await generateSketch({
+        photoStorageId: sourcePhotoStorageId,
         style: sketchStyle,
         email: user?.email,
       });
-      // re-fetch assets to get the new sketch URL
-      // assets query will reactively update — wait for it
+      setSketchUrl(generated.url ?? null);
       setStatus("done");
     } catch {
       setErrorMsg("Sketch generation failed. Please try again.");
@@ -203,9 +206,9 @@ export default function PhotoSketchScreen() {
               <ActivityIndicator color={colors.mutedTeal} />
               <Text style={styles.generatingText}>Drawing…</Text>
             </View>
-          ) : sketchUrl || assets?.sketch?.url ? (
+          ) : visibleSketchUrl ? (
             <Image
-              source={{ uri: sketchUrl ?? assets?.sketch?.url! }}
+              source={{ uri: visibleSketchUrl }}
               style={styles.previewImage}
             />
           ) : (
@@ -237,7 +240,7 @@ export default function PhotoSketchScreen() {
       </TouchableOpacity>
 
       {/* ── sketch style selector ──────────────────────────────────────── */}
-      {(status === "uploaded" || hasExistingSketch || uploadedStorageId) && (
+      {hasPhotoSource && (
         <>
           <View style={styles.divider} />
           <Text style={styles.sectionLabel}>Sketch style</Text>
@@ -270,7 +273,7 @@ export default function PhotoSketchScreen() {
               status === "generating" && styles.disabledBtn,
             ]}
             onPress={handleGenerateSketch}
-            disabled={status === "generating" || !uploadedStorageId}
+            disabled={status === "generating" || !sourcePhotoStorageId}
             activeOpacity={0.85}
           >
             {status === "generating" ? (

@@ -5,27 +5,27 @@ import "./globals.css";
 import ConvexClientProvider from "./ConvexClientProvider";
 import AuthSessionProvider from "./AuthSessionProvider";
 
-/* cormorant garamond — specific garamond cut that matches the brand kit */
+/* cormorant — shared brand display font */
 const cormorant = localFont({
   src: [
     {
-      path: "../../../../packages/assets/fonts/CormorantGaramond-Regular.ttf",
+      path: "../../../../packages/assets/fonts/Cormorant-Regular.ttf",
       weight: "400",
       style: "normal",
     },
     {
-      path: "../../../../packages/assets/fonts/CormorantGaramond-Italic.ttf",
+      path: "../../../../packages/assets/fonts/Cormorant-Italic.ttf",
       weight: "400",
       style: "italic",
     },
     {
-      path: "../../../../packages/assets/fonts/CormorantGaramond-Medium.ttf",
-      weight: "500",
+      path: "../../../../packages/assets/fonts/Cormorant-SemiBold.ttf",
+      weight: "600",
       style: "normal",
     },
     {
-      path: "../../../../packages/assets/fonts/CormorantGaramond-MediumItalic.ttf",
-      weight: "500",
+      path: "../../../../packages/assets/fonts/Cormorant-SemiBoldItalic.ttf",
+      weight: "600",
       style: "italic",
     },
   ],
@@ -36,22 +36,22 @@ const cormorant = localFont({
 const inter = localFont({
   src: [
     {
-      path: "../../../../apps/native/src/assets/fonts/Inter-Regular.ttf",
+      path: "../../../../packages/ui/assets/fonts/Inter-Regular.ttf",
       weight: "400",
       style: "normal",
     },
     {
-      path: "../../../../apps/native/src/assets/fonts/Inter-Medium.ttf",
+      path: "../../../../packages/ui/assets/fonts/Inter-Medium.ttf",
       weight: "500",
       style: "normal",
     },
     {
-      path: "../../../../apps/native/src/assets/fonts/Inter-SemiBold.ttf",
+      path: "../../../../packages/ui/assets/fonts/Inter-SemiBold.ttf",
       weight: "600",
       style: "normal",
     },
     {
-      path: "../../../../apps/native/src/assets/fonts/Inter-Bold.ttf",
+      path: "../../../../packages/ui/assets/fonts/Inter-Bold.ttf",
       weight: "700",
       style: "normal",
     },

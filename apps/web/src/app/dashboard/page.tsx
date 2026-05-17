@@ -35,12 +35,15 @@ export default function DashboardPage() {
   const generateUploadUrl = useMutation(api.photos.generateUploadUrl);
   const savePhoto = useMutation(api.photos.savePhoto);
   const saveSketch = useMutation(api.photos.saveSketch);
+  const generateShareToken = useMutation(api.profile.generateShareToken);
   const generateSketchWithNanoBanana = useAction(
     api.photos.generateSketchWithNanoBanana,
   );
 
   const [acting, setActing] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const [shareToken, setShareToken] = useState("");
   const [notesMap, setNotesMap] = useState<Record<string, string>>({});
   const [portraitPhotoId, setPortraitPhotoId] = useState("");
   const [portraitPhotoStorageId, setPortraitPhotoStorageId] = useState("");
@@ -112,76 +115,64 @@ export default function DashboardPage() {
     );
   }
 
-  const shareMessage =
-    "I'm using Sohoist for private introductions. If someone comes to mind who you genuinely think I'd click with, I'd love your referral.";
   const displayedPortrait = portraitSketch || assets?.sketch?.url || "";
   const sourcePhotoId = portraitPhotoId || assets?.photo?._id || "";
   const sourcePhotoStorageId =
     portraitPhotoStorageId || assets?.photo?.storageId || "";
+  const hasProfile = Boolean(profile?.displayName && profile?.city);
   const hasVoiceBrief = Boolean(profile?.voiceInterviewId);
   const hasSketch = Boolean(assets?.sketch);
-  const hasReferrers = (referrers?.length ?? 0) > 0;
-  const nextStep = !application
-    ? {
-        label: "Step 1",
-        title: "Apply privately.",
-        body: "Start with a quiet membership application before opening your intro brief.",
-        href: "/apply",
-        cta: "Start application",
-      }
-    : application.status !== "approved" && !profile
-      ? {
-          label: "Membership",
-          title: "Application in review.",
-          body: "Your private profile opens once the application is approved.",
-          href: "/application-status",
-          cta: "View status",
-        }
-        : !hasVoiceBrief
-        ? {
-            label: "Step 1 of 4",
-            title: "Create your intro brief.",
-            body: "Use the voice agent or written draft to create who you are and who you are looking for.",
-            href: "/dashboard/voice",
-            cta: "Start voice brief",
-          }
-        : !hasSketch
-          ? {
-              label: "Step 2 of 4",
-              title: "Add your pencil portrait.",
-              body: "Upload a photo and turn it into a private sketch before sharing your brief.",
-              href: "/dashboard/photo",
-              cta: "Add portrait",
-            }
-        : !rewardPool
-          ? {
-              label: "Step 3 of 4",
-              title: "Set your private reward.",
-              body: "Save the thank-you signal before inviting more referrers.",
-              href: "/dashboard/reward",
-              cta: "Set reward",
-            }
-          : !hasReferrers
-            ? {
-                label: "Step 4 of 4",
-                title: "Invite trusted referrers.",
-                body: "Choose the friends who know your taste and can vouch with care.",
-                href: "/dashboard/referrers/invite",
-                cta: "Invite a friend",
-              }
-            : {
-                label: "Ready",
-                title: "Review your private intro loop.",
-                body: "Preview the shared profile, tune privacy, and track new introductions.",
-                href: "/dashboard/shared-preview",
-                cta: "Preview share",
-              };
+  const currentShareToken = shareToken || profile?.shareToken || "";
+
+  // 3-step setup flow
+  const steps = [
+    {
+      num: 1,
+      label: "Your profile",
+      done: hasProfile && hasSketch,
+      href: "/dashboard/profile",
+      cta: hasProfile && hasSketch ? "Edit profile" : "Set up profile",
+    },
+    {
+      num: 2,
+      label: "Your intro brief",
+      done: hasVoiceBrief,
+      href: "/dashboard/voice",
+      cta: hasVoiceBrief ? "Edit brief" : "Create brief",
+    },
+    {
+      num: 3,
+      label: "Share your profile",
+      done: Boolean(currentShareToken),
+      href: "#share",
+      cta: currentShareToken ? "Copy share link" : "Generate share link",
+    },
+  ];
+  const currentStep = steps.find((s) => !s.done) ?? steps[steps.length - 1];
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(shareMessage);
+      const msg = "I'm using Sohoist for private introductions. If someone comes to mind who you genuinely think I'd click with, I'd love your referral.";
+      await navigator.clipboard.writeText(msg);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+
+  async function handleShareLink() {
+    if (!sessionEmail) return;
+    try {
+      let token = currentShareToken;
+      if (!token) {
+        token = await generateShareToken({ email: sessionEmail });
+        setShareToken(token);
+      }
+      const link = `${window.location.origin}/share/${token}`;
+      await navigator.clipboard.writeText(link);
+      setShareLinkCopied(true);
+      setTimeout(() => setShareLinkCopied(false), 2500);
     } catch {
       /* clipboard blocked */
     }
@@ -391,92 +382,86 @@ export default function DashboardPage() {
           {profile?.headline ?? `Welcome, ${firstName ?? "there"}.`}
         </h1>
 
+        {/* ── 3-step progress ─────────────────────────────────────────────── */}
         <section style={{ marginBottom: 32 }}>
           <div style={s.card}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 20,
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ maxWidth: 560 }}>
-                <p
-                  style={{
-                    fontFamily: t.body,
-                    fontSize: 11,
-                    letterSpacing: "1px",
-                    textTransform: "uppercase",
-                    color: t.teal,
-                    margin: "0 0 8px",
-                  }}
-                >
-                  {nextStep.label}
-                </p>
-                <h2
-                  style={{
-                    fontFamily: t.display,
-                    fontSize: 30,
-                    fontWeight: 400,
-                    color: t.ink,
-                    lineHeight: 1.05,
-                    letterSpacing: "-0.02em",
-                    margin: "0 0 8px",
-                  }}
-                >
-                  {nextStep.title}
-                </h2>
-                <p
-                  style={{
-                    fontFamily: t.body,
-                    fontSize: 13,
-                    lineHeight: 1.65,
-                    color: t.stone,
-                    margin: 0,
-                  }}
-                >
-                  {nextStep.body}
-                </p>
-              </div>
-
-              <a
-                href={nextStep.href}
-                className="mx-auto sm:mx-0"
-                style={{ ...s.primaryBtn, padding: "0 24px" }}
-              >
-                {nextStep.cta}
-              </a>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                gap: 10,
-                marginTop: 22,
-              }}
-            >
-              <Metric label="Brief" value={hasVoiceBrief ? "Ready" : "Draft"} />
-              <Metric
-                label="Referrers"
-                value={referrers ? String(referrers.length) : "0"}
-              />
-              <Metric
-                label="Reward"
-                value={
-                  rewardPool
-                    ? rewardPool.hideAmount
-                      ? "Funded"
-                      : `$${Math.round(rewardPool.amount / 100)}`
-                    : "None"
-                }
-              />
-              <Metric
-                label="Referrals"
-                value={referrals ? String(referrals.length) : "0"}
-              />
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {steps.map((step) => {
+                const isActive = step.num === currentStep.num;
+                return (
+                  <div
+                    key={step.num}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                      padding: "12px 16px",
+                      borderRadius: 14,
+                      backgroundColor: isActive
+                        ? "rgba(220,230,234,0.35)"
+                        : step.done
+                          ? "transparent"
+                          : "transparent",
+                      border: isActive
+                        ? `1px solid ${t.teal}44`
+                        : "1px solid transparent",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: step.done
+                          ? t.teal
+                          : isActive
+                            ? t.ink
+                            : "rgba(93,90,87,0.14)",
+                        fontFamily: t.body,
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: step.done || isActive ? t.paper : t.stone,
+                      }}
+                    >
+                      {step.done ? "✓" : step.num}
+                    </div>
+                    <p
+                      style={{
+                        margin: 0,
+                        flex: 1,
+                        fontFamily: t.body,
+                        fontSize: 14,
+                        color: step.done ? t.stone : t.ink,
+                        opacity: step.done ? 0.65 : 1,
+                        textDecoration: step.done ? "line-through" : "none",
+                      }}
+                    >
+                      {step.label}
+                    </p>
+                    {isActive && (
+                      step.num === 3 ? (
+                        <button
+                          onClick={handleShareLink}
+                          style={{ ...s.primaryBtn, padding: "0 18px", height: 36, fontSize: 12 }}
+                        >
+                          {shareLinkCopied ? "Copied!" : currentShareToken ? "Copy link" : "Generate link"}
+                        </button>
+                      ) : (
+                        <a
+                          href={step.href}
+                          style={{ ...s.primaryBtn, padding: "0 18px", height: 36, fontSize: 12, textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                        >
+                          {step.cta}
+                        </a>
+                      )
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>

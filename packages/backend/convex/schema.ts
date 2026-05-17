@@ -13,6 +13,13 @@ export default defineSchema({
     .index("by_clerkId", ["clerkId"])
     .index("by_email", ["email"]),
 
+  waitlistSignups: defineTable({
+    email: v.string(),
+    source: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_email", ["email"]),
+
   membershipApplications: defineTable({
     userId: v.id("users"),
     name: v.string(),
@@ -42,6 +49,10 @@ export default defineSchema({
     headline: v.optional(v.string()),
     bio: v.optional(v.string()),
     openTo: v.optional(v.string()),
+    aboutBullets: v.optional(v.array(v.string())),
+    lookingForBullets: v.optional(v.array(v.string())),
+    shareToken: v.optional(v.string()),
+    displayName: v.optional(v.string()),
     friendsShouldReferSomeoneWho: v.optional(v.string()),
     doNotReferIf: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
@@ -71,7 +82,9 @@ export default defineSchema({
     ),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_userId", ["userId"]),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_shareToken", ["shareToken"]),
 
   voiceInterviews: defineTable({
     userId: v.id("users"),
@@ -278,4 +291,13 @@ export default defineSchema({
     rules: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_slug", ["slug"]),
+
+  homePhotos: defineTable({
+    userId: v.id("users"),
+    storageId: v.string(),
+    url: v.optional(v.string()),
+    caption: v.optional(v.string()),
+    order: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
 });

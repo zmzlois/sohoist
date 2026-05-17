@@ -4,6 +4,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Image,
   ImageBackground,
   Dimensions,
   Platform,
@@ -11,6 +12,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { brand, heroOverlay, logo } from "@packages/ui";
+import { nativeImages } from "@packages/ui/assets/native";
 import { colors, fonts, radius, shadow } from "../theme";
 import { useNativeAuth } from "../auth";
 
@@ -43,14 +46,27 @@ const LoginScreen = () => {
     <View style={styles.container}>
       {/* ── hero image ─────────────────────────────────────────── */}
       <ImageBackground
-        source={require("../assets/friend-gather-hero.png")}
+        source={nativeImages.heroDinner}
         style={styles.hero}
         resizeMode="cover"
       >
-        {/* top-left wordmark */}
-        <View style={styles.wordmark}>
-          <Text style={styles.wordmarkName}>Sohoist</Text>
-          <Text style={styles.wordmarkDescriptor}>PRIVATE INTRODUCTIONS</Text>
+        <View style={styles.heroScrim} pointerEvents="none" />
+        <View style={styles.heroTopScrim} pointerEvents="none" />
+
+        <View style={styles.heroHeader}>
+          {/* top-left wordmark */}
+          <View style={styles.wordmark}>
+            <Text style={styles.wordmarkName}>{brand.name}</Text>
+            <Text style={styles.wordmarkDescriptor}>{brand.descriptor}</Text>
+          </View>
+
+          <View style={styles.logoMark}>
+            <Image
+              source={nativeImages.logoMark}
+              style={styles.logoImage}
+              resizeMode="cover"
+            />
+          </View>
         </View>
 
         {/* gradient fade into paper */}
@@ -59,7 +75,7 @@ const LoginScreen = () => {
 
       {/* ── auth panel ─────────────────────────────────────────── */}
       <View style={styles.panel}>
-        <Text style={styles.headline}>Join privately.</Text>
+        <Text style={styles.headline}>Join Sohoist.</Text>
         <Text style={styles.subline}>
           Meet through people who know your vibe.
         </Text>
@@ -81,7 +97,7 @@ const LoginScreen = () => {
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            placeholder="Password (leave blank if you're Lois)"
+            placeholder="Password"
             placeholderTextColor="rgba(93,90,87,0.58)"
             autoCapitalize="none"
             autoComplete="password"
@@ -102,7 +118,7 @@ const LoginScreen = () => {
             {loading ? (
               <ActivityIndicator color={colors.paper} size="small" />
             ) : (
-              <Text style={styles.submitButtonText}>Continue privately</Text>
+              <Text style={styles.submitButtonText}>Continue</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -135,9 +151,29 @@ const styles = StyleSheet.create({
     height: HERO_HEIGHT,
     justifyContent: "space-between",
   },
-  wordmark: {
+  heroScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: heroOverlay.native.scrim,
+  },
+  heroTopScrim: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+    backgroundColor: heroOverlay.native.topScrim,
+  },
+  heroHeader: {
+    position: "relative",
+    zIndex: 2,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     paddingTop: Platform.OS === "ios" ? 56 : 32,
     paddingHorizontal: 24,
+  },
+  wordmark: {
+    flexShrink: 1,
   },
   wordmarkName: {
     fontFamily: fonts.display,
@@ -154,6 +190,23 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     color: "rgba(255,255,255,0.8)",
     marginTop: 2,
+  },
+  logoMark: {
+    width: logo.nativeSize,
+    height: logo.nativeSize,
+    borderRadius: logo.nativeSize / 2,
+    overflow: "hidden",
+    backgroundColor: "rgba(245,239,230,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(245,239,230,0.26)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.24,
+    shadowRadius: 14,
+  },
+  logoImage: {
+    width: "100%",
+    height: "100%",
   },
   /* gradient fade: photo → paper color */
   heroFade: {

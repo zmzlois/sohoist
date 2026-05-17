@@ -43,27 +43,28 @@ export const transcribeAndSave = action({
     });
     const transcript = transcription.text;
 
-    // extract structured profile fields
+    // extract bullets and prose summary for both core questions
     const chat = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
           content: `You are helping create a private intro brief for Sohoist, a private dating network.
-Extract profile information from this voice recording transcript and return valid JSON only.
+Extract profile information from this voice recording and return valid JSON only.
 Keep the tone warm, authentic, and first-person. Use their actual words where possible.
+Each bullet should be a complete, human sentence — not a fragment.
 
 Return exactly this shape:
 {
-  "whoYouAre": "1-2 sentence description",
-  "realLife": "what they're like outside of work",
-  "lookingFor": "what they want in a partner/relationship",
-  "friendsShouldKnow": "what a referring friend should know before making an intro",
-  "dealbreakers": "things that won't work for them",
-  "tags": ["3 to 5 short lifestyle or values tags"]
+  "aboutBullets": ["3 to 5 concise first-person sentences about who this person is"],
+  "lookingForBullets": ["3 to 5 concise first-person sentences about who they are looking for"],
+  "bio": "1-2 sentence prose summary of who they are",
+  "openTo": "1-2 sentence prose summary of who they are looking for",
+  "tags": ["3 to 5 short lifestyle or values tags"],
+  "headline": "a single natural sentence headline, max 80 chars"
 }
 
-If a topic isn't covered, use an empty string.`,
+If a topic isn't covered, use empty arrays or strings.`,
         },
         { role: "user", content: transcript },
       ],
@@ -74,17 +75,17 @@ If a topic isn't covered, use an empty string.`,
       chat.choices[0]?.message?.content ?? "{}",
     ) as Record<string, any>;
 
-    // map to question/answer pairs and save
+    const aboutBullets: string[] = Array.isArray(extracted.aboutBullets)
+      ? extracted.aboutBullets.filter((b: unknown) => typeof b === "string" && (b as string).trim())
+      : [];
+    const lookingForBullets: string[] = Array.isArray(extracted.lookingForBullets)
+      ? extracted.lookingForBullets.filter((b: unknown) => typeof b === "string" && (b as string).trim())
+      : [];
+
     const answers = [
-      { question: "Who are you?", answer: extracted.whoYouAre ?? "" },
-      { question: "What are you like in real life?", answer: extracted.realLife ?? "" },
-      { question: "What are you looking for?", answer: extracted.lookingFor ?? "" },
-      {
-        question: "What should friends know before referring someone to you?",
-        answer: extracted.friendsShouldKnow ?? "",
-      },
-      { question: "What are your dealbreakers?", answer: extracted.dealbreakers ?? "" },
-    ].filter((a) => a.answer.trim().length > 0);
+      { question: "Who are you?", answer: String(extracted.bio ?? "").trim() },
+      { question: "What are you looking for?", answer: String(extracted.openTo ?? "").trim() },
+    ].filter((a) => a.answer.length > 0);
 
     await ctx.runMutation(api.profile.saveVoiceAnswers, {
       answers,
@@ -93,6 +94,14 @@ If a topic isn't covered, use an empty string.`,
       email,
     });
 
-    return { transcript, extracted };
+    // save bullets and headline to the profile
+    await ctx.runMutation(api.profile.updateProfile, {
+      email,
+      aboutBullets,
+      lookingForBullets,
+      headline: typeof extracted.headline === "string" ? extracted.headline : undefined,
+    });
+
+    return { transcript, extracted, aboutBullets, lookingForBullets };
   },
 });

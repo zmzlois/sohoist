@@ -1,44 +1,54 @@
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { Platform, StatusBar, View } from "react-native";
 import ConvexClientProvider from "../../ConvexClientProvider";
+import { nativeFonts } from "@packages/ui/assets/native";
 import { NativeAuthProvider } from "../auth";
 
 const statusBarHeight =
   Platform.OS === "ios" ? 50 : (StatusBar.currentHeight ?? 0);
 
 export default function RootLayout() {
+  const pathname = usePathname();
   const [loaded] = useFonts({
     /* inter — ui / body */
-    Bold: require("../assets/fonts/Inter-Bold.ttf"),
-    SemiBold: require("../assets/fonts/Inter-SemiBold.ttf"),
-    Medium: require("../assets/fonts/Inter-Medium.ttf"),
-    Regular: require("../assets/fonts/Inter-Regular.ttf"),
+    Bold: nativeFonts.interBold,
+    SemiBold: nativeFonts.interSemiBold,
+    Medium: nativeFonts.interMedium,
+    Regular: nativeFonts.interRegular,
     /* montserrat — kept for any legacy screens */
     MBold: require("../assets/fonts/Montserrat-Bold.ttf"),
     MSemiBold: require("../assets/fonts/Montserrat-SemiBold.ttf"),
     MMedium: require("../assets/fonts/Montserrat-Medium.ttf"),
     MRegular: require("../assets/fonts/Montserrat-Regular.ttf"),
     MLight: require("../assets/fonts/Montserrat-Light.ttf"),
-    /* cormorant — local files from packages/assets/fonts */
-    "Cormorant-Regular": require("../assets/fonts/Cormorant-Regular.ttf"),
-    "Cormorant-Italic": require("../assets/fonts/Cormorant-Italic.ttf"),
-    "Cormorant-Medium": require("../assets/fonts/Cormorant-Medium.ttf"),
-    "Cormorant-MediumItalic": require("../assets/fonts/Cormorant-MediumItalic.ttf"),
-    "Cormorant-SemiBold": require("../assets/fonts/Cormorant-SemiBold.ttf"),
+    /* cormorant — shared brand display fonts */
+    "Cormorant-Regular": nativeFonts.cormorantRegular,
+    "Cormorant-Italic": nativeFonts.cormorantItalic,
+    "Cormorant-Medium": nativeFonts.cormorantMedium,
+    "Cormorant-MediumItalic": nativeFonts.cormorantMediumItalic,
+    "Cormorant-SemiBold": nativeFonts.cormorantSemiBold,
   });
 
   if (!loaded) return null;
+
+  const isSignInRoute = pathname === "/sign-in";
+  const statusBackground = isSignInRoute ? "transparent" : "#F5EFE6";
 
   return (
     <NativeAuthProvider>
       <ConvexClientProvider>
         <View style={{ flex: 1 }}>
-          <View style={{ height: statusBarHeight, backgroundColor: "#F5EFE6" }}>
+          <View
+            style={{
+              height: isSignInRoute ? 0 : statusBarHeight,
+              backgroundColor: statusBackground,
+            }}
+          >
             <StatusBar
               translucent
-              backgroundColor="#F5EFE6"
-              barStyle="dark-content"
+              backgroundColor={statusBackground}
+              barStyle={isSignInRoute ? "light-content" : "dark-content"}
             />
           </View>
           <Stack screenOptions={{ headerShown: false }} />

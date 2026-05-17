@@ -5,9 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useState } from "react";
-
-import heroImage from "../../../public/images/friend-gather-hero.png";
-import logoImage from "../../../public/images/logo.png";
+import {
+  HeroHeader,
+  heroCtaTextStyle,
+  heroHeaderLinkStyle,
+} from "@/components/common/heroChrome";
+import { heroOverlay } from "@packages/ui";
+import { webImages } from "@packages/ui/assets/web";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -54,7 +58,7 @@ export default function SignInPage() {
     >
       {/* hero image */}
       <Image
-        src={heroImage}
+        src={webImages.heroDinner}
         alt="Friends at a candlelit dinner"
         fill
         priority
@@ -66,95 +70,27 @@ export default function SignInPage() {
         style={{
           position: "absolute",
           inset: 0,
-          background: [
-            "linear-gradient(to top,",
-            "  rgba(27,25,23,0.96) 0%,",
-            "  rgba(27,25,23,0.72) 42%,",
-            "  rgba(27,25,23,0.22) 70%,",
-            "  rgba(27,25,23,0.04) 100%",
-            ")",
-          ].join(" "),
+          background: heroOverlay.web.scrim,
         }}
       />
 
-      {/* wordmark */}
-      <div
-        style={{
-          position: "absolute",
-          top: 28,
-          left: 28,
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            overflow: "hidden",
-            flexShrink: 0,
-            boxShadow: "0 2px 12px rgba(0,0,0,0.28)",
-          }}
-        >
-          <Image
-            src={logoImage}
-            alt="Sohoist"
-            width={40}
-            height={40}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        </div>
-        <div>
-          <p
-            className="text-display"
-            style={{
-              fontSize: 22,
-              color: "#F5EFE6",
-              lineHeight: 1,
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Sohoist
-          </p>
-          <p
-            className="text-label"
-            style={{
-              fontSize: 8,
-              color: "rgba(245,239,230,0.5)",
-              marginTop: 3,
-              letterSpacing: "0.12em",
-            }}
-          >
-            Private Introductions
-          </p>
-        </div>
-      </div>
-
-      {/* back to home — top right */}
-      <div style={{ position: "absolute", top: 32, right: 28 }}>
-        <Link
-          href="/"
-          style={{
-            fontFamily: "var(--font-body)",
-            fontSize: 13,
-            color: "rgba(245,239,230,0.55)",
-            textDecoration: "none",
-          }}
-        >
-          ← Back
-        </Link>
-      </div>
+      <HeroHeader
+        right={
+          <Link href="/" style={heroHeaderLinkStyle}>
+            ← Back
+          </Link>
+        }
+      />
 
       {/* sign-in panel — bottom */}
       <div
         style={{
           position: "absolute",
-          bottom: 0,
+          top: "50%",
           left: 0,
           right: 0,
-          padding: "0 24px 52px",
+          transform: "translateY(-50%)",
+          padding: "0 24px",
           maxWidth: 480,
           marginInline: "auto",
         }}
@@ -222,7 +158,7 @@ export default function SignInPage() {
             autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="Password (leave blank if you're Lois)"
+            placeholder="Password"
             style={{
               height: 52,
               borderRadius: 999,
@@ -262,9 +198,7 @@ export default function SignInPage() {
               borderRadius: 999,
               backgroundColor: "#F5EFE6",
               border: "none",
-              fontFamily: "var(--font-body)",
-              fontSize: 14,
-              fontWeight: 500,
+              ...heroCtaTextStyle,
               color: "#2B2A28",
               cursor: loading ? "wait" : "pointer",
               boxShadow: "0 6px 20px rgba(0,0,0,0.18)",

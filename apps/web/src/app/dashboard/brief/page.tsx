@@ -13,7 +13,7 @@ import {
   SectionHeading,
   StatusBadge,
 } from "@/components/member/MemberScaffold";
-import portraitFallback from "../../../../public/images/region-02.png";
+import { webImages } from "@packages/ui/assets/web";
 
 export default function IntroBriefPage() {
   const { data: session } = useSession();
@@ -64,7 +64,7 @@ export default function IntroBriefPage() {
               />
             ) : (
               <Image
-                src={portraitFallback}
+                src={webImages.portraitFallback}
                 alt=""
                 style={portraitStyle}
                 priority
@@ -118,7 +118,9 @@ export default function IntroBriefPage() {
             />
             <BriefSection
               label="Friends should refer someone who"
-              value={profile.friendsShouldReferSomeoneWho ?? "Not specified yet."}
+              value={
+                profile.friendsShouldReferSomeoneWho ?? "Not specified yet."
+              }
             />
             <BriefSection
               label="Do not refer if"

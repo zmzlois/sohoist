@@ -1,34 +1,6 @@
 PODS:
-  - AsyncStorage (3.0.2):
-    - hermes-engine
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-Core-prebuilt
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - ReactNativeDependencies
-    - Yoga
-  - EXAV (15.0.2):
-    - ExpoModulesCore
-    - ReactCommon/turbomodule/core
   - EXConstants (55.0.16):
     - ExpoModulesCore
-  - EXImageLoader (5.0.0):
-    - ExpoModulesCore
-    - React-Core
   - Expo (55.0.24):
     - ExpoModulesCore
     - hermes-engine
@@ -56,6 +28,10 @@ PODS:
     - Yoga
   - ExpoAsset (55.0.17):
     - ExpoModulesCore
+  - ExpoAudio (55.0.14):
+    - ExpoModulesCore
+  - ExpoContacts (55.0.14):
+    - ExpoModulesCore
   - ExpoDomWebView (55.0.5):
     - ExpoModulesCore
   - ExpoFileSystem (55.0.20):
@@ -71,7 +47,7 @@ PODS:
     - SDWebImageAVIFCoder (~> 0.11.0)
     - SDWebImageSVGCoder (~> 1.7.0)
     - SDWebImageWebPCoder (~> 0.14.6)
-  - ExpoImagePicker (16.0.6):
+  - ExpoImagePicker (55.0.20):
     - ExpoModulesCore
   - ExpoKeepAwake (55.0.8):
     - ExpoModulesCore
@@ -1984,6 +1960,28 @@ PODS:
     - React-utils (= 0.83.6)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.83.6)
+  - RNCAsyncStorage (2.2.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RNGestureHandler (2.30.1):
     - hermes-engine
     - RCTRequired
@@ -2212,12 +2210,11 @@ PODS:
   - Yoga (0.0.0)
 
 DEPENDENCIES:
-  - "AsyncStorage (from `../../../node_modules/@react-native-async-storage/async-storage`)"
-  - EXAV (from `../../../node_modules/expo-av/ios`)
   - EXConstants (from `../../../node_modules/expo-constants/ios`)
-  - EXImageLoader (from `../../../node_modules/expo-image-loader/ios`)
   - Expo (from `../../../node_modules/expo`)
   - ExpoAsset (from `../../../node_modules/expo-asset/ios`)
+  - ExpoAudio (from `../../../node_modules/expo-audio/ios`)
+  - ExpoContacts (from `../../../node_modules/expo-contacts/ios`)
   - "ExpoDomWebView (from `../../../node_modules/@expo/dom-webview/ios`)"
   - ExpoFileSystem (from `../../../node_modules/expo-file-system/ios`)
   - ExpoFont (from `../../../node_modules/expo-font/ios`)
@@ -2306,6 +2303,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../../../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
+  - "RNCAsyncStorage (from `../../../node_modules/@react-native-async-storage/async-storage`)"
   - RNGestureHandler (from `../../../node_modules/react-native-gesture-handler`)
   - RNReanimated (from `../../../node_modules/react-native-reanimated`)
   - RNScreens (from `../../../node_modules/react-native-screens`)
@@ -2323,18 +2321,16 @@ SPEC REPOS:
     - SDWebImageWebPCoder
 
 EXTERNAL SOURCES:
-  AsyncStorage:
-    :path: "../../../node_modules/@react-native-async-storage/async-storage"
-  EXAV:
-    :path: "../../../node_modules/expo-av/ios"
   EXConstants:
     :path: "../../../node_modules/expo-constants/ios"
-  EXImageLoader:
-    :path: "../../../node_modules/expo-image-loader/ios"
   Expo:
     :path: "../../../node_modules/expo"
   ExpoAsset:
     :path: "../../../node_modules/expo-asset/ios"
+  ExpoAudio:
+    :path: "../../../node_modules/expo-audio/ios"
+  ExpoContacts:
+    :path: "../../../node_modules/expo-contacts/ios"
   ExpoDomWebView:
     :path: "../../../node_modules/@expo/dom-webview/ios"
   ExpoFileSystem:
@@ -2510,6 +2506,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  RNCAsyncStorage:
+    :path: "../../../node_modules/@react-native-async-storage/async-storage"
   RNGestureHandler:
     :path: "../../../node_modules/react-native-gesture-handler"
   RNReanimated:
@@ -2522,18 +2520,17 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
-  AsyncStorage: 2e1d431842588f5af845737e6435c1fcbecdab51
-  EXAV: 4c41f0a6ae54a0b96597abc90e37962ab2ee0d85
   EXConstants: dadbeba983acc30f855a919658a2b34fbd86615d
-  EXImageLoader: e5da974e25b13585c196b658a440720c075482d5
   Expo: 16f3bba63c001ae67319631affd50e83c429d7c6
   ExpoAsset: 7721c5c4ae2a7c3c8147a046727ac6c020b05648
+  ExpoAudio: a826903abdeba843cde8602bd1c077d808b31f1d
+  ExpoContacts: 9b16b5a573c3d899b2d70c86adfb948cff58e997
   ExpoDomWebView: 2b2fbd9a07de8790569257cbf9dfdaa31cf95c70
   ExpoFileSystem: 5d01aa6678ccde01172351aad5720ee16845ae82
   ExpoFont: a95606f106a6394df8edf6d0d87aab9020af5ad4
   ExpoGlassEffect: 2dedac2fe817f9b02d0dad29ce0aef7afebc5cd4
   ExpoImage: 74d26278507b0b0d85b1e50562412172603f59eb
-  ExpoImagePicker: 24e5ba8da111f74519b1e6dc556e0b438b2b8464
+  ExpoImagePicker: 7c75b2f076d6f45598fcbd035908aebc4c2eb257
   ExpoKeepAwake: d0eb7a0719500d2a43fbf29b6f79e84d70c75ebf
   ExpoLinking: 40f36cf134ea6930f37867858c0643877b865d53
   ExpoLogBox: a678d36477ab9544fe63e0b5328a0716539b6774
@@ -2618,6 +2615,7 @@ SPEC CHECKSUMS:
   ReactCodegen: c09b3834bfb3d9bfc459dec95f0e8451f4798605
   ReactCommon: ba28cd4e7d9e24014d2772a80e32da020c732b00
   ReactNativeDependencies: 4b063db7b39471caba4fbb240aa9617195b784ea
+  RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
   RNGestureHandler: 0ea8153746a92b3744d4eaadade647debedf646e
   RNReanimated: 55f3c45edaee604ad1f1447cb13e928cb6e21660
   RNScreens: 14243fa0d9842ffa7f8bb2d00b6c3cfd3ca817e8

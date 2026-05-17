@@ -15,9 +15,7 @@ import {
   SectionHeading,
   StatusBadge,
 } from "@/components/member/MemberScaffold";
-import logoMark from "../../../../public/images/logo.png";
-import noteImage from "../../../../public/images/region-01.png";
-import portraitFallback from "../../../../public/images/region-02.png";
+import { webImages } from "@packages/ui/assets/web";
 
 export default function InviteTokenPage() {
   const params = useParams<{ token: string }>();
@@ -50,7 +48,9 @@ export default function InviteTokenPage() {
     try {
       await acceptInvite({ token, email: sessionEmail });
       setAccepted(true);
-      setMessage("Invite accepted. The member can now approve you as a referrer.");
+      setMessage(
+        "Invite accepted. The member can now approve you as a referrer.",
+      );
     } catch {
       setError("Couldn't accept this invite. It may already be accepted.");
     } finally {
@@ -125,7 +125,11 @@ export default function InviteTokenPage() {
                 style={portraitStyle}
               />
             ) : (
-              <Image src={portraitFallback} alt="" style={portraitStyle} />
+              <Image
+                src={webImages.portraitFallback}
+                alt=""
+                style={portraitStyle}
+              />
             )}
           </PaperCard>
 
@@ -136,10 +140,17 @@ export default function InviteTokenPage() {
                 detail={<StatusBadge>{profile.referrerStatus}</StatusBadge>}
               />
               <div style={brandStyle}>
-                <Image src={logoMark} alt="" style={logoStyle} priority />
+                <Image
+                  src={webImages.logoMark}
+                  alt=""
+                  style={logoStyle}
+                  priority
+                />
                 <span>Private intro brief</span>
               </div>
-              <h2 style={headlineStyle}>{profile.bio ?? "Private by default."}</h2>
+              <h2 style={headlineStyle}>
+                {profile.bio ?? "Private by default."}
+              </h2>
               <p style={metaStyle}>
                 {[profile.profession, profile.city, profile.relationshipIntent]
                   .filter(Boolean)
@@ -171,7 +182,11 @@ export default function InviteTokenPage() {
                 value={profile.privateNotesForReferrers}
               />
 
-              <Image src={noteImage} alt="" style={noteStyle} />
+              <Image
+                src={webImages.noteThroughFriends}
+                alt=""
+                style={noteStyle}
+              />
 
               {!sessionEmail ? (
                 <Link
@@ -213,7 +228,9 @@ export default function InviteTokenPage() {
                   <span style={form.label}>Candidate contact</span>
                   <input
                     value={candidateContact}
-                    onChange={(event) => setCandidateContact(event.target.value)}
+                    onChange={(event) =>
+                      setCandidateContact(event.target.value)
+                    }
                     placeholder="Email or phone"
                     style={form.input}
                     required
@@ -249,13 +266,21 @@ export default function InviteTokenPage() {
                   <input
                     type="checkbox"
                     checked={candidateKnows}
-                    onChange={(event) => setCandidateKnows(event.target.checked)}
+                    onChange={(event) =>
+                      setCandidateKnows(event.target.checked)
+                    }
                   />
                   Candidate knows about this possible intro.
                 </label>
-                {message ? <p style={{ margin: 0, color: palette.teal }}>{message}</p> : null}
+                {message ? (
+                  <p style={{ margin: 0, color: palette.teal }}>{message}</p>
+                ) : null}
                 {error ? <p style={form.error}>{error}</p> : null}
-                <button type="submit" style={form.primary} disabled={saving || !sessionEmail}>
+                <button
+                  type="submit"
+                  style={form.primary}
+                  disabled={saving || !sessionEmail}
+                >
                   Submit referral
                 </button>
               </form>

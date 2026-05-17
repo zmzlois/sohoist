@@ -1,3 +1,5 @@
+import { colors as brandColors } from "@packages/ui";
+
 /**
  * sohoist design tokens for expo / react native.
  * mirrors the css variables in apps/web/src/app/globals.css exactly.
@@ -8,57 +10,47 @@
  */
 
 export const colors = {
-  paper:         "#F5EFE6",
-  warmIvory:     "#EFE7DC",
-  fogBlue:       "#DCE6EA",
-  stone:         "#5D5A57",
-  ink:           "#2B2A28",
-  dustLavender:  "#B8AFC9",
-  mutedTeal:     "#8FAFB3",
-  warmAmber:     "#D6B56D",
-  /* border helpers */
-  borderSoft:    "rgba(120, 100, 75, 0.14)",
-  borderGraphite:"rgba(43, 42, 40, 0.18)",
+  ...brandColors,
 } as const;
 
 /** font family strings — use with StyleSheet fontFamily */
 export const fonts = {
   /* cormorant — local files, loaded in _layout.tsx */
-  display:             "Cormorant-Regular",
-  displayItalic:       "Cormorant-Italic",
-  displayMedium:       "Cormorant-Medium",
+  display: "Cormorant-Regular",
+  displayItalic: "Cormorant-Italic",
+  displayMedium: "Cormorant-Medium",
   displayMediumItalic: "Cormorant-MediumItalic",
-  displaySemiBold:     "Cormorant-SemiBold",
+  displaySemiBold: "Cormorant-SemiBold",
   /* inter — registered in _layout.tsx as shorthand names */
-  body:                "Regular",
-  bodyMedium:          "Medium",
-  bodySemiBold:        "SemiBold",
-  bodyBold:            "Bold",
+  body: "Regular",
+  bodyMedium: "Medium",
+  bodySemiBold: "SemiBold",
+  bodyBold: "Bold",
   /* system mono — IBM Plex Mono can be added via @expo-google-fonts/ibm-plex-mono */
-  mono:                "Courier New",
+  mono: "Courier New",
 } as const;
 
 export const radius = {
-  sm:    10,
-  md:    16,
-  card:  20,
-  pill:  999,
+  sm: 10,
+  md: 16,
+  card: 20,
+  pill: 999,
   phone: 36,
 } as const;
 
 export const shadow = {
-  paper:    { boxShadow: "0px 12px 40px rgba(70, 50, 30, 0.08)" },
+  paper: { boxShadow: "0px 12px 40px rgba(70, 50, 30, 0.08)" },
   elevated: { boxShadow: "0px 24px 80px rgba(70, 50, 30, 0.14)" },
-  subtle:   { boxShadow: "0px 6px 20px rgba(70, 50, 30, 0.06)" },
+  subtle: { boxShadow: "0px 6px 20px rgba(70, 50, 30, 0.06)" },
 } as const;
 
 /** spacing rhythm — 4pt base grid */
 export const spacing = {
-  screenH:   20,   /* horizontal screen padding */
-  cardPad:   18,   /* card inner padding */
-  sectionGap:24,   /* between major sections */
-  titleTop:  56,   /* top spacing under header */
-  ctaHeight: 52,   /* bottom CTA button height */
+  screenH: 20 /* horizontal screen padding */,
+  cardPad: 18 /* card inner padding */,
+  sectionGap: 24 /* between major sections */,
+  titleTop: 56 /* top spacing under header */,
+  ctaHeight: 52 /* bottom CTA button height */,
 } as const;
 
 export const typography = {
@@ -182,5 +174,13 @@ export const components = {
 } as const;
 
 /** full token export, mirrors web sohoistTheme */
-export const theme = { colors, fonts, radius, shadow, spacing, typography, components } as const;
+export const theme = {
+  colors,
+  fonts,
+  radius,
+  shadow,
+  spacing,
+  typography,
+  components,
+} as const;
 export default theme;

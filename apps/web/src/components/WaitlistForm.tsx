@@ -1,15 +1,44 @@
 "use client";
 
 import { useState } from "react";
+import { heroCtaTextStyle } from "@/components/common/heroChrome";
 
 export default function WaitlistForm() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
-    setSubmitted(true);
+    const nextEmail = email.trim();
+    if (!nextEmail || submitting) return;
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: nextEmail, source: "landing" }),
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(body?.error ?? "Could not join the list.");
+      }
+
+      setSubmitted(true);
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Could not join the list.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (submitted) {
@@ -66,10 +95,31 @@ export default function WaitlistForm() {
       <button
         type="submit"
         className="primary-button"
-        style={{ background: "#F5EFE6", color: "#2B2A28", boxShadow: "none" }}
+        disabled={submitting}
+        style={{
+          background: "#F5EFE6",
+          color: "#2B2A28",
+          boxShadow: "none",
+          ...heroCtaTextStyle,
+          opacity: submitting ? 0.72 : 1,
+          cursor: submitting ? "default" : "pointer",
+        }}
       >
-        Join privately now
+        {submitting ? "Joining..." : "Join now"}
       </button>
+      {error ? (
+        <p
+          style={{
+            flexBasis: "100%",
+            fontFamily: "var(--font-body)",
+            fontSize: "13px",
+            color: "rgba(245,239,230,0.72)",
+            marginTop: "2px",
+          }}
+        >
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }

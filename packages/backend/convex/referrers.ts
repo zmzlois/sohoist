@@ -1,11 +1,15 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { findCurrentUser, requireCurrentUser } from "./session";
+import { ADMIN_EMAIL, findCurrentUser, requireCurrentUser } from "./session";
 
 function makeToken() {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+}
+
+function normalizePhone(value?: string) {
+  return value?.replace(/[^\d+]/g, "") ?? "";
 }
 
 /**
@@ -36,11 +40,35 @@ export const inviteReferrer = mutation({
   },
   handler: async (ctx, { email, phone, sessionEmail }) => {
     const user = await requireCurrentUser(ctx, sessionEmail);
+    const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedPhone = normalizePhone(phone);
+
+    const existingRows = await ctx.db
+      .query("trustedReferrers")
+      .withIndex("by_memberId", (q: any) => q.eq("memberId", user._id))
+      .collect();
+    const existing = existingRows.find((row) => {
+      const rowEmail = row.email?.trim().toLowerCase();
+      const rowPhone = normalizePhone(row.phone);
+      return (
+        (normalizedEmail && rowEmail === normalizedEmail) ||
+        (normalizedPhone && rowPhone === normalizedPhone)
+      );
+    });
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        email: normalizedEmail ?? existing.email,
+        phone: normalizedPhone || existing.phone,
+        status: existing.status === "removed" ? "invited" : existing.status,
+      });
+      return existing._id;
+    }
 
     return await ctx.db.insert("trustedReferrers", {
       memberId: user._id,
-      email,
-      phone,
+      email: normalizedEmail,
+      phone: normalizedPhone || undefined,
       inviteToken: makeToken(),
       status: "invited",
       createdAt: Date.now(),
@@ -63,7 +91,124 @@ export const getMyReferrers = query({
       .order("desc")
       .collect();
 
-    return rows;
+    return await Promise.all(
+      rows
+        .filter((row) => row.referrerId || row.email || row.phone)
+        .map(async (row) => {
+          const referrer = row.referrerId ? await ctx.db.get(row.referrerId) : null;
+          const memberReferrals = row.referrerId
+            ? (
+                await ctx.db
+                  .query("referrals")
+                  .withIndex("by_referrerId", (q: any) =>
+                    q.eq("referrerId", row.referrerId),
+                  )
+                  .collect()
+              )
+                .filter((referral) => referral.memberId === user._id)
+                .sort((a, b) => b.createdAt - a.createdAt)
+            : [];
+          const latestReferral = memberReferrals[0];
+
+          return {
+            ...row,
+            referrerName:
+              referrer?.name ??
+              row.email ??
+              row.phone ??
+              (row.status === "invited"
+                ? "Invited referrer"
+                : "Trusted referrer"),
+            introPreview:
+              latestReferral?.whyAFit ??
+              "No intro note yet. Invite them to add context when someone comes to mind.",
+            voiceNoteUrl: latestReferral?.voiceNoteUrl ?? null,
+            referralStatus: latestReferral?.status ?? null,
+            referralCount: memberReferrals.length,
+          };
+        }),
+    );
+  },
+});
+
+/** match imported contacts against sohoist users and the member's trusted circle */
+export const matchContacts = query({
+  args: {
+    email: v.optional(v.string()),
+    contacts: v.array(
+      v.object({
+        name: v.string(),
+        emails: v.array(v.string()),
+        phones: v.array(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, { email, contacts }) => {
+    const user = await findCurrentUser(ctx, email);
+    if (!user) return [];
+
+    const existingReferrers = await ctx.db
+      .query("trustedReferrers")
+      .withIndex("by_memberId", (q: any) => q.eq("memberId", user._id))
+      .collect();
+    const visibleReferrers = existingReferrers.filter(
+      (row) => row.referrerId || row.email || row.phone,
+    );
+
+    const rows: Array<{
+      name: string;
+      email: string | null;
+      phone: string | null;
+      sohoistUserId: string | null;
+      sohoistName: string | null;
+      alreadyOnSohoist: boolean;
+      accessStatus: string;
+      referrerId: string | null;
+    }> = [];
+    for (const contact of contacts.slice(0, 80)) {
+      const normalizedEmails = contact.emails
+        .map((value) => value.trim().toLowerCase())
+        .filter((value) => value !== ADMIN_EMAIL)
+        .filter(Boolean);
+      const normalizedPhones = contact.phones.map(normalizePhone).filter(Boolean);
+      const matchedUser = normalizedEmails.length
+        ? await ctx.db
+            .query("users")
+            .withIndex("by_email", (q: any) => q.eq("email", normalizedEmails[0]))
+            .unique()
+        : null;
+      const referrer = visibleReferrers.find((row) => {
+        const rowEmail = row.email?.trim().toLowerCase();
+        const rowPhone = normalizePhone(row.phone);
+        return (
+          (rowEmail && normalizedEmails.includes(rowEmail)) ||
+          (rowPhone && normalizedPhones.includes(rowPhone)) ||
+          (matchedUser && row.referrerId === matchedUser._id)
+        );
+      });
+
+      rows.push({
+        name: contact.name,
+        email: normalizedEmails[0] ?? null,
+        phone: normalizedPhones[0] ?? null,
+        sohoistUserId: matchedUser?._id ?? null,
+        sohoistName: matchedUser?.name ?? null,
+        alreadyOnSohoist: Boolean(matchedUser),
+        accessStatus: referrer?.status ?? "not_invited",
+        referrerId: referrer?._id ?? null,
+      });
+    }
+
+    return rows.sort((a, b) => {
+      const rank = (row: (typeof rows)[number]) => {
+        if (row.accessStatus === "approved") return 0;
+        if (row.accessStatus === "accepted") return 1;
+        if (row.alreadyOnSohoist) return 2;
+        if (row.accessStatus === "invited") return 3;
+        return 4;
+      };
+      return rank(a) - rank(b) || a.name.localeCompare(b.name);
+    });
   },
 });
 

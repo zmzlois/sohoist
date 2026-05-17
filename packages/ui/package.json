@@ -1,0 +1,11 @@
+{
+  "name": "@packages/ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./assets/web": "./src/assets/web.ts",
+    "./assets/native": "./src/assets/native.ts"
+  }
+}

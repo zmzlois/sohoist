@@ -19,6 +19,8 @@
       }
     ],
     "paths": {
+      "@packages/ui": ["../../packages/ui/src/index.ts"],
+      "@packages/ui/*": ["../../packages/ui/src/*"],
       "@/*": ["./src/*"]
     }
   },

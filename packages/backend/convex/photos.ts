@@ -5,12 +5,32 @@ import { api } from "./_generated/api";
 import { findCurrentUser, requireCurrentUser } from "./session";
 
 const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image";
-const PENCIL_PROMPT = [
-  "Turn this profile photo into a flattering, refined pencil sketch portrait.",
-  "Make the subject look naturally prettier and more polished while preserving identity, age, expression, and real facial features.",
-  "Use editorial graphite linework on warm ivory paper, with subtle hand-drawn texture.",
-  "Keep the original composition and aspect ratio. Do not add text, logos, frames, hearts, or dating-app styling.",
-].join(" ");
+
+type SketchStyle =
+  | "soft_graphite"
+  | "editorial_pencil"
+  | "watercolor_portrait"
+  | "minimal_line";
+
+const STYLE_PROMPTS: Record<SketchStyle, string> = {
+  soft_graphite:
+    "Use soft graphite shading, warm intimate shadows, visible pencil texture, and gentle tonal depth.",
+  editorial_pencil:
+    "Use clean editorial pencil linework, confident facial detail, restrained shading, and a polished magazine portrait feel.",
+  watercolor_portrait:
+    "Use pencil linework with soft watercolor edges, fog-blue and warm-amber washes, subtle colour, and quiet paper texture.",
+  minimal_line:
+    "Use elegant minimal line art, sparse confident strokes, very light shading, and a refined hand-drawn silhouette.",
+};
+
+function buildPencilPrompt(style: SketchStyle) {
+  return [
+    "Turn this profile photo into a flattering, refined sketch portrait.",
+    "Make the subject look naturally prettier and more polished while preserving identity, age, expression, and real facial features.",
+    STYLE_PROMPTS[style],
+    "Keep the original composition and aspect ratio. Do not add text, logos, frames, hearts, or dating-app styling.",
+  ].join(" ");
+}
 
 type GeminiInlineData = {
   data?: string;
@@ -175,7 +195,7 @@ export const generateSketchWithNanoBanana = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity && !email) throw new Error("Sign in required");
 
-    return await generateNanoBananaSketch(ctx, photoStorageId);
+    return await generateNanoBananaSketch(ctx, photoStorageId, "editorial_pencil");
   },
 });
 
@@ -203,7 +223,7 @@ export const generateSketch = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity && !email) throw new Error("Sign in required");
 
-    const generated = await generateNanoBananaSketch(ctx, photoStorageId);
+    const generated = await generateNanoBananaSketch(ctx, photoStorageId, style);
     const saved = (await ctx.runMutation(api.photos.saveSketch as any, {
       storageId: generated.storageId,
       style,
@@ -252,6 +272,7 @@ function newest<T extends { createdAt: number }>(rows: T[]) {
 async function generateNanoBananaSketch(
   ctx: ActionCtx,
   photoStorageId: string,
+  style: SketchStyle,
 ) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -274,7 +295,7 @@ async function generateNanoBananaSketch(
         contents: [
           {
             parts: [
-              { text: PENCIL_PROMPT },
+              { text: buildPencilPrompt(style) },
               {
                 inline_data: {
                   mime_type: original.type || "image/jpeg",
@@ -348,3 +369,70 @@ function base64ToBytes(base64: string) {
   }
   return bytes;
 }
+
+// ─── home photos ─────────────────────────────────────────────────────────────
+
+export const saveHomePhoto = mutation({
+  args: {
+    email: v.optional(v.string()),
+    storageId: v.string(),
+    url: v.optional(v.string()),
+    caption: v.optional(v.string()),
+    order: v.optional(v.number()),
+  },
+  handler: async (ctx, { email, storageId, url, caption, order }) => {
+    const user = await requireCurrentUser(ctx, email);
+    return await ctx.db.insert("homePhotos", {
+      userId: user._id,
+      storageId,
+      url,
+      caption,
+      order,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const getMyHomePhotos = query({
+  args: { email: v.optional(v.string()) },
+  handler: async (ctx, { email }) => {
+    const user = await requireCurrentUser(ctx, email);
+    const photos = await ctx.db
+      .query("homePhotos")
+      .withIndex("by_userId", (q: any) => q.eq("userId", user._id))
+      .collect();
+    return photos.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  },
+});
+
+export const deleteHomePhoto = mutation({
+  args: { email: v.optional(v.string()), photoId: v.id("homePhotos") },
+  handler: async (ctx, { email, photoId }) => {
+    const user = await requireCurrentUser(ctx, email);
+    const photo = await ctx.db.get(photoId);
+    if (!photo || photo.userId !== user._id) throw new Error("Not found");
+    await ctx.db.delete(photoId);
+  },
+});
+
+export const resolveHomePhotoUrl = action({
+  args: {
+    email: v.optional(v.string()),
+    storageId: v.string(),
+    photoId: v.id("homePhotos"),
+  },
+  handler: async (ctx, { email, storageId, photoId }) => {
+    const url = await ctx.storage.getUrl(storageId);
+    if (url) {
+      await ctx.runMutation(api.photos.patchHomePhotoUrl, { photoId, url });
+    }
+    return url;
+  },
+});
+
+export const patchHomePhotoUrl = mutation({
+  args: { photoId: v.id("homePhotos"), url: v.string() },
+  handler: async (ctx, { photoId, url }) => {
+    await ctx.db.patch(photoId, { url });
+  },
+});

@@ -33,6 +33,14 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Sohoist uses your camera when you choose to take a profile photo.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Sohoist uses your contacts to help you choose trusted referrers.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Sohoist needs your microphone to create your voice profile.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Sohoist uses your photos to generate a private pencil sketch portrait.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

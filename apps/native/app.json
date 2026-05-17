@@ -21,7 +21,9 @@
       "deploymentTarget": "15.1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Sohoist needs your microphone to create your voice profile.",
-        "NSPhotoLibraryUsageDescription": "Sohoist uses your photos to generate a private pencil sketch portrait."
+        "NSCameraUsageDescription": "Sohoist uses your camera when you choose to take a profile photo.",
+        "NSPhotoLibraryUsageDescription": "Sohoist uses your photos to generate a private pencil sketch portrait.",
+        "NSContactsUsageDescription": "Sohoist uses your contacts to help you choose trusted referrers."
       }
     },
     "android": {
@@ -41,8 +43,29 @@
           "root": "./src/app"
         }
       ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Sohoist needs your microphone to create your voice profile.",
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
+        }
+      ],
       "expo-font",
-      "expo-image-picker"
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Sohoist uses your contacts to help you choose trusted referrers."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Sohoist uses your camera when you choose to take a profile photo.",
+          "photosPermission": "Sohoist uses your photos to generate a private pencil sketch portrait.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
