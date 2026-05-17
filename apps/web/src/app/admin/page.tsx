@@ -126,7 +126,7 @@ export default function AdminPage() {
         <p style={styles.emptyText}>No applications found.</p>
       ) : (
         <div style={styles.list}>
-          {applications.map((app) => (
+          {applications.map((app: any) => (
             <div key={app._id} style={styles.card}>
               {/* top row */}
               <div style={styles.cardHeader}>

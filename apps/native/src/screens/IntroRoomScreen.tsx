@@ -32,7 +32,10 @@ const MILESTONES = [
 ];
 
 const STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
-  candidate_invited: { label: "Waiting for candidate", color: colors.warmAmber },
+  candidate_invited: {
+    label: "Waiting for candidate",
+    color: colors.warmAmber,
+  },
   candidate_accepted: { label: "Introduction active", color: colors.mutedTeal },
   intro_active: { label: "Introduction active", color: colors.mutedTeal },
   first_date_logged: { label: "You've met", color: colors.mutedTeal },
@@ -68,7 +71,10 @@ export default function IntroRoomScreen() {
     );
   }
 
-  async function advance(introId: string, nextStatus: typeof MILESTONES[number]["status"] | "closed") {
+  async function advance(
+    introId: string,
+    nextStatus: (typeof MILESTONES)[number]["status"] | "closed",
+  ) {
     await updateStatus({
       introductionId: introId as any,
       status: nextStatus,
@@ -128,14 +134,15 @@ export default function IntroRoomScreen() {
         </View>
       )}
 
-      {displayIntros.map((intro) => {
+      {displayIntros.map((intro: any) => {
         const statusInfo =
           STATUS_DISPLAY[intro.status] ?? STATUS_DISPLAY["intro_active"]!;
 
         const currentMilestoneIdx = MILESTONES.findIndex(
           (m) =>
             m.status === intro.status ||
-            (intro.status === "candidate_accepted" && m.status === "intro_active"),
+            (intro.status === "candidate_accepted" &&
+              m.status === "intro_active"),
         );
         const nextMilestone = MILESTONES[currentMilestoneIdx + 1];
         const isClosed =
@@ -150,12 +157,17 @@ export default function IntroRoomScreen() {
             <View style={styles.cardTop}>
               <View>
                 <Text style={styles.referrerLabel}>REFERRED BY</Text>
-                <Text style={styles.referrerName}>{(intro as any).referrerName}</Text>
+                <Text style={styles.referrerName}>
+                  {(intro as any).referrerName}
+                </Text>
               </View>
               <View
                 style={[
                   components.badge,
-                  { borderColor: statusInfo.color + "44", backgroundColor: statusInfo.color + "18" },
+                  {
+                    borderColor: statusInfo.color + "44",
+                    backgroundColor: statusInfo.color + "18",
+                  },
                 ]}
               >
                 <Text
@@ -227,7 +239,8 @@ export default function IntroRoomScreen() {
               <>
                 <View style={styles.divider} />
                 <Text style={styles.closedNote}>
-                  {intro.status === "relationship_confirmed" || intro.status === "payout_pending"
+                  {intro.status === "relationship_confirmed" ||
+                  intro.status === "payout_pending"
                     ? "Your reward is being tracked. Stay in the relationship for 6 months for it to release."
                     : "This introduction is complete."}
                 </Text>
@@ -241,9 +254,7 @@ export default function IntroRoomScreen() {
                 onPress={() => advance(intro._id, "closed")}
                 activeOpacity={0.6}
               >
-                <Text style={styles.closeIntroText}>
-                  Not pursuing this →
-                </Text>
+                <Text style={styles.closeIntroText}>Not pursuing this →</Text>
               </TouchableOpacity>
             )}
           </View>

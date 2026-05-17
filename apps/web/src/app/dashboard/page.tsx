@@ -49,8 +49,20 @@ export default function DashboardPage() {
     api.profile.getMyProfile,
     sessionEmail ? { email: sessionEmail } : "skip",
   );
+  const application = useQuery(
+    api.applications.getMyApplication,
+    sessionEmail ? { email: sessionEmail } : "skip",
+  );
   const referrers = useQuery(
     api.referrers.getMyReferrers,
+    sessionEmail ? { email: sessionEmail } : "skip",
+  );
+  const rewardPool = useQuery(
+    api.rewardPools.getMyRewardPool,
+    sessionEmail ? { email: sessionEmail } : "skip",
+  );
+  const referrals = useQuery(
+    api.referrals.getMyReferrals,
     sessionEmail ? { email: sessionEmail } : "skip",
   );
   const applications = useQuery(
@@ -82,6 +94,55 @@ export default function DashboardPage() {
   }
 
   const shareUrl = `https://sohoist.app/member/${convexUser?._id ?? ""}`;
+  const hasVoiceBrief = Boolean(profile?.voiceInterviewId);
+  const hasReferrers = (referrers?.length ?? 0) > 0;
+  const nextStep = !application
+    ? {
+        label: "Step 1",
+        title: "Apply privately.",
+        body: "Start with a quiet membership application before opening your intro brief.",
+        href: "/apply",
+        cta: "Start application",
+      }
+    : application.status !== "approved" && !profile
+      ? {
+          label: "Membership",
+          title: "Application in review.",
+          body: "Your private profile opens once the application is approved.",
+          href: "/application-status",
+          cta: "View status",
+        }
+      : !hasVoiceBrief
+        ? {
+            label: "Step 1 of 4",
+            title: "Create your intro brief.",
+            body: "Answer two prompts so trusted friends can refer with context.",
+            href: "/dashboard/voice",
+            cta: "Start voice brief",
+          }
+        : !rewardPool
+          ? {
+              label: "Step 2 of 4",
+              title: "Set your private reward.",
+              body: "Save the thank-you signal before inviting more referrers.",
+              href: "/dashboard/reward",
+              cta: "Set reward",
+            }
+          : !hasReferrers
+            ? {
+                label: "Step 3 of 4",
+                title: "Invite trusted referrers.",
+                body: "Choose the friends who know your taste and can vouch with care.",
+                href: "/dashboard/referrers/invite",
+                cta: "Invite a friend",
+              }
+            : {
+                label: "Ready",
+                title: "Review your private intro loop.",
+                body: "Preview your brief, tune privacy, and review new referrals.",
+                href: "/dashboard/brief",
+                cta: "Preview brief",
+              };
 
   async function handleCopy() {
     try {
@@ -212,6 +273,92 @@ export default function DashboardPage() {
           {profile?.headline ?? `Welcome, ${firstName ?? "there"}.`}
         </h1>
 
+        <section style={{ marginBottom: 32 }}>
+          <div style={s.card}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 20,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ maxWidth: 560 }}>
+                <p
+                  style={{
+                    fontFamily: t.body,
+                    fontSize: 11,
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    color: t.teal,
+                    margin: "0 0 8px",
+                  }}
+                >
+                  {nextStep.label}
+                </p>
+                <h2
+                  style={{
+                    fontFamily: t.display,
+                    fontSize: 30,
+                    fontWeight: 400,
+                    color: t.ink,
+                    lineHeight: 1.05,
+                    letterSpacing: "-0.02em",
+                    margin: "0 0 8px",
+                  }}
+                >
+                  {nextStep.title}
+                </h2>
+                <p
+                  style={{
+                    fontFamily: t.body,
+                    fontSize: 13,
+                    lineHeight: 1.65,
+                    color: t.stone,
+                    margin: 0,
+                  }}
+                >
+                  {nextStep.body}
+                </p>
+              </div>
+
+              <a href={nextStep.href} style={{ ...s.primaryBtn, padding: "0 24px" }}>
+                {nextStep.cta}
+              </a>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                gap: 10,
+                marginTop: 22,
+              }}
+            >
+              <Metric label="Brief" value={hasVoiceBrief ? "Ready" : "Draft"} />
+              <Metric
+                label="Referrers"
+                value={referrers ? String(referrers.length) : "0"}
+              />
+              <Metric
+                label="Reward"
+                value={
+                  rewardPool
+                    ? rewardPool.hideAmount
+                      ? "Funded"
+                      : `$${Math.round(rewardPool.amount / 100)}`
+                    : "None"
+                }
+              />
+              <Metric
+                label="Referrals"
+                value={referrals ? String(referrals.length) : "0"}
+              />
+            </div>
+          </div>
+        </section>
+
         {/* ── admin panel ─────────────────────────────────────────────────── */}
         {isAdmin && (
           <section style={{ marginBottom: 48 }}>
@@ -242,7 +389,7 @@ export default function DashboardPage() {
               <div
                 style={{ display: "flex", flexDirection: "column", gap: 12 }}
               >
-                {applications.map((app) => (
+                {applications.map((app: any) => (
                   <div key={app._id} style={s.card}>
                     <div
                       style={{
@@ -622,6 +769,19 @@ export default function DashboardPage() {
                 >
                   {copied ? "Copied!" : "Share my profile →"}
                 </button>
+                <a
+                  href="/dashboard/brief"
+                  style={{
+                    ...s.primaryBtn,
+                    flex: 1,
+                    backgroundColor: "transparent",
+                    color: t.ink,
+                    border: `1px solid ${t.borderHard}`,
+                    textDecoration: "none",
+                  }}
+                >
+                  Preview brief
+                </a>
               </div>
 
               <p
@@ -652,7 +812,7 @@ export default function DashboardPage() {
 
             {referrers === undefined ? (
               <p style={s.muted}>Loading…</p>
-            ) : referrers.length === 0 ? (
+            ) : !referrers || referrers.length === 0 ? (
               <div style={s.emptyCard}>
                 <p
                   style={{
@@ -725,7 +885,7 @@ export default function DashboardPage() {
 
             <div style={{ marginTop: 14 }}>
               <a
-                href="/dashboard/invite"
+                href="/dashboard/referrers/invite"
                 style={{
                   display: "block",
                   textAlign: "center",
@@ -743,6 +903,43 @@ export default function DashboardPage() {
           </section>
         </div>
       </main>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        borderRadius: 16,
+        border: `1px solid ${t.border}`,
+        backgroundColor: "rgba(245,239,230,0.46)",
+        padding: "12px 14px",
+      }}
+    >
+      <p
+        style={{
+          fontFamily: t.mono,
+          fontSize: 18,
+          color: t.ink,
+          margin: "0 0 2px",
+        }}
+      >
+        {value}
+      </p>
+      <p
+        style={{
+          fontFamily: t.body,
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: t.stone,
+          margin: 0,
+        }}
+      >
+        {label}
+      </p>
     </div>
   );
 }

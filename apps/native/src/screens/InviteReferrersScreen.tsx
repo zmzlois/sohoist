@@ -216,12 +216,12 @@ export default function InviteReferrersScreen() {
         </View>
 
         {/* loading or genuinely empty */}
-        {(referrers === undefined || referrers.length === 0) && (
+        {(!referrers || referrers.length === 0) && (
           <Text style={styles.emptyCircle}>No one invited yet.</Text>
         )}
 
         {/* referrer rows */}
-        {referrers?.map((row) => {
+        {referrers?.map((row: any) => {
           const isPending = actionPending === row._id;
 
           return (

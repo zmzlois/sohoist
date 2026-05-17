@@ -64,9 +64,19 @@ export const getMyReferrals = query({
     const rows = await ctx.db
       .query("referrals")
       .withIndex("by_memberId", (q: any) => q.eq("memberId", user._id))
+      .order("desc")
       .collect();
 
-    return rows.sort((a: any, b: any) => b.createdAt - a.createdAt);
+    return await Promise.all(
+      rows.map(async (referral) => {
+        const referrer = await ctx.db.get(referral.referrerId);
+        return {
+          ...referral,
+          referrerName:
+            referrer?.name ?? referrer?.email?.split("@")[0] ?? "A friend",
+        };
+      }),
+    );
   },
 });
 
@@ -79,12 +89,11 @@ export const getReferralsMadeByMe = query({
     const user = await findCurrentUser(ctx, email);
     if (!user) return [];
 
-    const rows = await ctx.db
+    return await ctx.db
       .query("referrals")
       .withIndex("by_referrerId", (q: any) => q.eq("referrerId", user._id))
+      .order("desc")
       .collect();
-
-    return rows.sort((a: any, b: any) => b.createdAt - a.createdAt);
   },
 });
 
@@ -114,7 +123,7 @@ export const respondToReferral = mutation({
         memberId: referral.memberId,
         referrerId: referral.referrerId,
         status: "candidate_invited",
-        inviteToken: Math.random().toString(36).slice(2, 14),
+        inviteToken: Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, "0")).join(""),
         memberAcceptedAt: now,
         createdAt: now,
         updatedAt: now,

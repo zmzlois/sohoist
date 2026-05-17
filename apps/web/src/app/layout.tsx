@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { Inter, IBM_Plex_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 import ConvexClientProvider from "./ConvexClientProvider";
@@ -34,15 +33,31 @@ const cormorant = localFont({
   display: "swap",
 });
 
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: [
+    {
+      path: "../../../../apps/native/src/assets/fonts/Inter-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../../../../apps/native/src/assets/fonts/Inter-Medium.ttf",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../../../../apps/native/src/assets/fonts/Inter-SemiBold.ttf",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "../../../../apps/native/src/assets/fonts/Inter-Bold.ttf",
+      weight: "700",
+      style: "normal",
+    },
+  ],
   variable: "--font-inter",
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  weight: ["400", "500"],
-  subsets: ["latin"],
-  variable: "--font-ibm-mono",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -62,7 +77,6 @@ export default function RootLayout({
         className={cn(
           cormorant.variable,
           inter.variable,
-          ibmPlexMono.variable,
           "font-body antialiased",
         )}
       >

@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* ─── sohoist design tokens ─────────────────────────────────────────────── */
 
@@ -11,34 +11,36 @@
   --breakpoint-xl: 1440px;
 
   /* color palette — warm paper, pencil, watercolor, quiet trust */
-  --color-paper:          #F5EFE6;
-  --color-warm-ivory:     #EFE7DC;
-  --color-fog-blue:       #DCE6EA;
-  --color-stone:          #5D5A57;
-  --color-ink:            #2B2A28;
-  --color-dust-lavender:  #B8AFC9;
-  --color-muted-teal:     #8FAFB3;
-  --color-warm-amber:     #D6B56D;
+  --color-paper: #f5efe6;
+  --color-warm-ivory: #efe7dc;
+  --color-fog-blue: #dce6ea;
+  --color-stone: #5d5a57;
+  --color-ink: #2b2a28;
+  --color-dust-lavender: #b8afc9;
+  --color-muted-teal: #8fafb3;
+  --color-warm-amber: #d6b56d;
 
   /* legacy alias kept for any existing component references */
-  --color-primary: #0D87E1;
+  --color-primary: #0d87e1;
 
   /* typography — display, body, mono */
-  --font-display:  var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
-  --font-body:     var(--font-inter), Inter, sans-serif;
-  --font-mono:     var(--font-ibm-mono), "IBM Plex Mono", "Courier New", monospace;
+  --font-display: var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
+  --font-body: var(--font-inter), Inter, sans-serif;
+  --font-mono:
+    var(--font-ibm-mono, ui-monospace), "IBM Plex Mono", "Courier New",
+    monospace;
 
   /* radius scale */
-  --radius-sm:     10px;
-  --radius-md:     16px;
-  --radius-card:   20px;
-  --radius-pill:   999px;
-  --radius-phone:  36px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-card: 20px;
+  --radius-pill: 999px;
+  --radius-phone: 36px;
 
   /* shadow scale */
-  --shadow-paper:    0 12px 40px rgba(70, 50, 30, 0.08);
+  --shadow-paper: 0 12px 40px rgba(70, 50, 30, 0.08);
   --shadow-elevated: 0 24px 80px rgba(70, 50, 30, 0.14);
-  --shadow-subtle:   0 6px 20px rgba(70, 50, 30, 0.06);
+  --shadow-subtle: 0 6px 20px rgba(70, 50, 30, 0.06);
 
   /* layout */
   --container-max: 1180px;
@@ -79,7 +81,12 @@
   }
 
   /* default heading styles — editorial serif */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
     font-weight: 400;
     letter-spacing: -0.02em;
@@ -122,7 +129,7 @@
   background: linear-gradient(
     180deg,
     rgba(255, 252, 244, 0.94),
-    rgba(250, 243, 232, 0.90)
+    rgba(250, 243, 232, 0.9)
   );
   border: 1px solid rgba(120, 100, 75, 0.14);
   border-radius: var(--radius-card);
@@ -145,7 +152,9 @@
   font-size: 14px;
   font-weight: 500;
   box-shadow: 0 8px 28px rgba(43, 42, 40, 0.16);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
   cursor: pointer;
   border: none;
 }
@@ -177,7 +186,7 @@
 
 /* quiet link */
 .tertiary-link {
-  color: #668A90;
+  color: #668a90;
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
@@ -255,5 +264,7 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }

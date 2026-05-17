@@ -12,9 +12,10 @@ export const getMyIntroductions = query({
     const intros = await ctx.db
       .query("introductions")
       .withIndex("by_memberId", (q) => q.eq("memberId", user._id))
+      .order("desc")
       .collect();
 
-    const enriched = await Promise.all(
+    return await Promise.all(
       intros.map(async (intro) => {
         const referral = await ctx.db.get(intro.referralId);
         const referrer = await ctx.db.get(intro.referrerId);
@@ -26,8 +27,6 @@ export const getMyIntroductions = query({
         };
       }),
     );
-
-    return enriched.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 

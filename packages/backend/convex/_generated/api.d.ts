@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as applications from "../applications.js";
 import type * as introductions from "../introductions.js";
+import type * as photos from "../photos.js";
 import type * as profile from "../profile.js";
 import type * as referrals from "../referrals.js";
 import type * as referrers from "../referrers.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   applications: typeof applications;
   introductions: typeof introductions;
+  photos: typeof photos;
   profile: typeof profile;
   referrals: typeof referrals;
   referrers: typeof referrers;

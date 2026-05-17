@@ -123,6 +123,10 @@ export default function MemberHomeScreen() {
     api.profile.getMyProfile,
     user?.email ? { email: user.email } : "skip",
   );
+  const assets = useQuery(
+    api.photos.getMyAssets,
+    user?.email ? { email: user.email } : "skip",
+  );
   const referrers = useQuery(
     api.referrers.getMyReferrers,
     user?.email ? { email: user.email } : "skip",
@@ -146,6 +150,7 @@ export default function MemberHomeScreen() {
   }
 
   const hasInterview = Boolean(profile?.voiceInterviewId);
+  const hasSketch = Boolean(assets?.sketch);
   const hasReferrers = (referrers?.length ?? 0) > 0;
   const hasRewardPool = Boolean(rewardPool);
   const activeIntroCount = (introductions ?? []).filter(
@@ -184,7 +189,7 @@ export default function MemberHomeScreen() {
         <>
           <View style={components.paperCard}>
             <View style={[components.badge, styles.cardBadge]}>
-              <Text style={components.badgeText}>STEP 1 OF 3</Text>
+              <Text style={components.badgeText}>STEP 1 OF 4</Text>
             </View>
 
             <Text style={styles.cardHeadline}>Create your intro brief.</Text>
@@ -204,30 +209,58 @@ export default function MemberHomeScreen() {
                 Start voice profile →
               </Text>
             </TouchableOpacity>
-
-            {/* no-op secondary for now — modal not yet built */}
-            <TouchableOpacity
-              style={[components.secondaryButton, styles.whatIsThisBtn]}
-              activeOpacity={0.7}
-            >
-              <Text style={components.secondaryButtonText}>What is this?</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.stepsWrap}>
             <StepRow label="Create your intro brief" state="active" />
+            <StepRow label="Add your photo" state="empty" />
             <StepRow label="Invite trusted referrers" state="empty" />
             <StepRow label="Set up your reward pool" state="empty" />
           </View>
         </>
       )}
 
-      {/* state b: has interview but no referrers */}
-      {hasInterview && !hasReferrers && !hasRewardPool && (
+      {/* state a2: has interview but no sketch yet */}
+      {hasInterview && !hasSketch && (
         <>
           <View style={components.paperCard}>
             <View style={[components.badge, styles.cardBadge]}>
-              <Text style={components.badgeText}>STEP 2 OF 3</Text>
+              <Text style={components.badgeText}>STEP 2 OF 4</Text>
+            </View>
+
+            <Text style={styles.cardHeadline}>Add your photo.</Text>
+            <Text style={styles.cardBody}>
+              We'll turn it into a private pencil sketch portrait. Referrers see the sketch — your photo stays private by default.
+            </Text>
+
+            <View style={components.divider} />
+
+            <TouchableOpacity
+              style={components.primaryButton}
+              onPress={() => router.push("/photo-sketch")}
+              activeOpacity={0.8}
+            >
+              <Text style={components.primaryButtonText}>
+                Add photo →
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.stepsWrap}>
+            <StepRow label="Create your intro brief" state="done" />
+            <StepRow label="Add your photo" state="active" />
+            <StepRow label="Invite trusted referrers" state="empty" />
+            <StepRow label="Set up your reward pool" state="empty" />
+          </View>
+        </>
+      )}
+
+      {/* state b: has interview + sketch but no referrers */}
+      {hasInterview && hasSketch && !hasReferrers && !hasRewardPool && (
+        <>
+          <View style={components.paperCard}>
+            <View style={[components.badge, styles.cardBadge]}>
+              <Text style={components.badgeText}>STEP 3 OF 4</Text>
             </View>
 
             <Text style={styles.cardHeadline}>Invite your trusted circle.</Text>
@@ -251,18 +284,19 @@ export default function MemberHomeScreen() {
 
           <View style={styles.stepsWrap}>
             <StepRow label="Create your intro brief" state="done" />
+            <StepRow label="Add your photo" state="done" />
             <StepRow label="Invite trusted referrers" state="active" />
             <StepRow label="Set up your reward pool" state="empty" />
           </View>
         </>
       )}
 
-      {/* state b2: has interview + referrers but no reward pool yet */}
-      {hasInterview && hasReferrers && !hasRewardPool && (
+      {/* state b2: has interview + sketch + referrers but no reward pool yet */}
+      {hasInterview && hasSketch && hasReferrers && !hasRewardPool && (
         <>
           <View style={components.paperCard}>
             <View style={[components.badge, styles.cardBadge]}>
-              <Text style={components.badgeText}>STEP 3 OF 3</Text>
+              <Text style={components.badgeText}>STEP 4 OF 4</Text>
             </View>
             <Text style={styles.cardHeadline}>Set up your reward pool.</Text>
             <Text style={styles.cardBody}>
@@ -283,6 +317,7 @@ export default function MemberHomeScreen() {
           </View>
           <View style={styles.stepsWrap}>
             <StepRow label="Create your intro brief" state="done" />
+            <StepRow label="Add your photo" state="done" />
             <StepRow label="Invite trusted referrers" state="done" />
             <StepRow label="Set up your reward pool" state="active" />
           </View>

@@ -13,15 +13,15 @@
       "resizeMode": "contain",
       "backgroundColor": "#F5EFE6"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.sohoist",
+      "bundleIdentifier": "com.sohoist.app",
+      "buildNumber": "1",
       "deploymentTarget": "15.1",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Sohoist needs your microphone to create your voice profile."
+        "NSMicrophoneUsageDescription": "Sohoist needs your microphone to create your voice profile.",
+        "NSPhotoLibraryUsageDescription": "Sohoist uses your photos to generate a private pencil sketch portrait."
       }
     },
     "android": {
@@ -41,7 +41,8 @@
           "root": "./src/app"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-image-picker"
     ],
     "experiments": {
       "typedRoutes": true

@@ -16,7 +16,7 @@ export const inviteReferrer = mutation({
       memberId: user._id,
       email,
       phone,
-      inviteToken: Math.random().toString(36).slice(2, 14),
+      inviteToken: Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, "0")).join(""),
       status: "invited",
       createdAt: Date.now(),
     });
@@ -35,9 +35,10 @@ export const getMyReferrers = query({
     const rows = await ctx.db
       .query("trustedReferrers")
       .withIndex("by_memberId", (q: any) => q.eq("memberId", user._id))
+      .order("desc")
       .collect();
 
-    return rows.sort((a: any, b: any) => b.createdAt - a.createdAt);
+    return rows;
   },
 });
 
