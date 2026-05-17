@@ -45,8 +45,14 @@ export function MemberScaffold({
           <Link href="/dashboard/brief" style={styles.navLink}>
             Brief
           </Link>
+          <Link href="/dashboard/photo" style={styles.navLink}>
+            Photo
+          </Link>
           <Link href="/dashboard/referrals" style={styles.navLink}>
             Referrals
+          </Link>
+          <Link href="/dashboard/introductions" style={styles.navLink}>
+            Intros
           </Link>
           <Link href="/dashboard/privacy" style={styles.navLink}>
             Privacy

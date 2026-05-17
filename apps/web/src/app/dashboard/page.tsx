@@ -61,6 +61,10 @@ export default function DashboardPage() {
     api.rewardPools.getMyRewardPool,
     sessionEmail ? { email: sessionEmail } : "skip",
   );
+  const assets = useQuery(
+    api.photos.getMyAssets,
+    sessionEmail ? { email: sessionEmail } : "skip",
+  );
   const referrals = useQuery(
     api.referrals.getMyReferrals,
     sessionEmail ? { email: sessionEmail } : "skip",
@@ -95,6 +99,7 @@ export default function DashboardPage() {
 
   const shareUrl = `https://sohoist.app/member/${convexUser?._id ?? ""}`;
   const hasVoiceBrief = Boolean(profile?.voiceInterviewId);
+  const hasSketch = Boolean(assets?.sketch);
   const hasReferrers = (referrers?.length ?? 0) > 0;
   const nextStep = !application
     ? {
@@ -112,7 +117,7 @@ export default function DashboardPage() {
           href: "/application-status",
           cta: "View status",
         }
-      : !hasVoiceBrief
+        : !hasVoiceBrief
         ? {
             label: "Step 1 of 4",
             title: "Create your intro brief.",
@@ -120,9 +125,17 @@ export default function DashboardPage() {
             href: "/dashboard/voice",
             cta: "Start voice brief",
           }
-        : !rewardPool
+        : !hasSketch
           ? {
               label: "Step 2 of 4",
+              title: "Add your pencil portrait.",
+              body: "Upload a photo and turn it into a private sketch before sharing your brief.",
+              href: "/dashboard/photo",
+              cta: "Add portrait",
+            }
+        : !rewardPool
+          ? {
+              label: "Step 3 of 4",
               title: "Set your private reward.",
               body: "Save the thank-you signal before inviting more referrers.",
               href: "/dashboard/reward",
@@ -130,7 +143,7 @@ export default function DashboardPage() {
             }
           : !hasReferrers
             ? {
-                label: "Step 3 of 4",
+                label: "Step 4 of 4",
                 title: "Invite trusted referrers.",
                 body: "Choose the friends who know your taste and can vouch with care.",
                 href: "/dashboard/referrers/invite",
@@ -139,7 +152,7 @@ export default function DashboardPage() {
             : {
                 label: "Ready",
                 title: "Review your private intro loop.",
-                body: "Preview your brief, tune privacy, and review new referrals.",
+                body: "Preview your brief, tune privacy, and track new introductions.",
                 href: "/dashboard/brief",
                 cta: "Preview brief",
               };
@@ -781,6 +794,19 @@ export default function DashboardPage() {
                   }}
                 >
                   Preview brief
+                </a>
+                <a
+                  href="/dashboard/photo"
+                  style={{
+                    ...s.primaryBtn,
+                    flex: 1,
+                    backgroundColor: "transparent",
+                    color: t.ink,
+                    border: `1px solid ${t.borderHard}`,
+                    textDecoration: "none",
+                  }}
+                >
+                  Add portrait
                 </a>
               </div>
 

@@ -17,6 +17,7 @@ import type * as referrals from "../referrals.js";
 import type * as referrers from "../referrers.js";
 import type * as rewardPools from "../rewardPools.js";
 import type * as session from "../session.js";
+import type * as sharing from "../sharing.js";
 import type * as users from "../users.js";
 import type * as utils from "../utils.js";
 import type * as voice from "../voice.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   referrers: typeof referrers;
   rewardPools: typeof rewardPools;
   session: typeof session;
+  sharing: typeof sharing;
   users: typeof users;
   utils: typeof utils;
   voice: typeof voice;

@@ -13,7 +13,7 @@ import {
   SectionHeading,
   StatusBadge,
 } from "@/components/member/MemberScaffold";
-import portraitFallback from "../../../../../public/images/region-02.png";
+import portraitFallback from "../../../../public/images/region-02.png";
 
 export default function IntroBriefPage() {
   const { data: session } = useSession();
