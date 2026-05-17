@@ -2,6 +2,12 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { findCurrentUser, requireCurrentUser } from "./session";
 
+function makeToken() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /** submit a referral for a member. caller must be an approved referrer for that member. */
 export const submitReferral = mutation({
   args: {
@@ -123,7 +129,10 @@ export const respondToReferral = mutation({
         memberId: referral.memberId,
         referrerId: referral.referrerId,
         status: "candidate_invited",
-        inviteToken: Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, "0")).join(""),
+        candidateEmail: referral.candidateContact.includes("@")
+          ? referral.candidateContact.trim().toLowerCase()
+          : undefined,
+        inviteToken: makeToken(),
         memberAcceptedAt: now,
         createdAt: now,
         updatedAt: now,

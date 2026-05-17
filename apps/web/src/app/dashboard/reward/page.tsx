@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@packages/backend/convex/_generated/api";
@@ -26,22 +26,39 @@ export default function RewardPoolPage() {
   );
   const createRewardPool = useMutation(api.rewardPools.createRewardPool);
 
-  const [amount, setAmount] = useState(250);
-  const [customAmount, setCustomAmount] = useState("");
-  const [depositTier, setDepositTier] = useState<DepositTier>("minimum");
-  const [hideAmount, setHideAmount] = useState(false);
+  const [draft, setDraft] = useState<{
+    amount: number;
+    customAmount: string;
+    depositTier: DepositTier;
+    hideAmount: boolean;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!rewardPool) return;
-    setAmount(Math.round(rewardPool.amount / 100));
-    setDepositTier(rewardPool.depositTier as DepositTier);
-    setHideAmount(rewardPool.hideAmount);
-  }, [rewardPool]);
+  const values =
+    draft ??
+    (rewardPool
+      ? {
+          amount: Math.round(rewardPool.amount / 100),
+          customAmount: "",
+          depositTier: rewardPool.depositTier as DepositTier,
+          hideAmount: rewardPool.hideAmount,
+        }
+      : {
+          amount: 250,
+          customAmount: "",
+          depositTier: "minimum" as DepositTier,
+          hideAmount: false,
+        });
 
-  const selectedAmount = customAmount ? Number(customAmount) : amount;
+  function updateDraft(patch: Partial<typeof values>) {
+    setDraft({ ...values, ...patch });
+  }
+
+  const selectedAmount = values.customAmount
+    ? Number(values.customAmount)
+    : values.amount;
   const canSave =
     Number.isFinite(selectedAmount) && selectedAmount >= 100 && !saving;
 
@@ -55,8 +72,8 @@ export default function RewardPoolPage() {
       await createRewardPool({
         email: sessionEmail,
         amount: Math.round(selectedAmount * 100),
-        depositTier,
-        hideAmount,
+        depositTier: values.depositTier,
+        hideAmount: values.hideAmount,
       });
       setSaved(true);
     } catch {
@@ -99,17 +116,16 @@ export default function RewardPoolPage() {
                   key={value}
                   type="button"
                   onClick={() => {
-                    setAmount(value);
-                    setCustomAmount("");
+                    updateDraft({ amount: value, customAmount: "" });
                   }}
                   style={{
                     ...amountStyle,
                     borderColor:
-                      !customAmount && amount === value
+                      !values.customAmount && values.amount === value
                         ? palette.amber
                         : palette.border,
                     backgroundColor:
-                      !customAmount && amount === value
+                      !values.customAmount && values.amount === value
                         ? "rgba(214,181,109,0.13)"
                         : "rgba(245,239,230,0.54)",
                   }}
@@ -125,8 +141,10 @@ export default function RewardPoolPage() {
             <input
               type="number"
               min={100}
-              value={customAmount}
-              onChange={(event) => setCustomAmount(event.target.value)}
+              value={values.customAmount}
+              onChange={(event) =>
+                updateDraft({ customAmount: event.target.value })
+              }
               placeholder="Minimum $100"
               style={form.input}
             />
@@ -145,13 +163,15 @@ export default function RewardPoolPage() {
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setDepositTier(value)}
+                  onClick={() => updateDraft({ depositTier: value })}
                   style={{
                     ...tierStyle,
                     borderColor:
-                      depositTier === value ? palette.teal : palette.border,
+                      values.depositTier === value
+                        ? palette.teal
+                        : palette.border,
                     backgroundColor:
-                      depositTier === value
+                      values.depositTier === value
                         ? "rgba(143,175,179,0.14)"
                         : "rgba(245,239,230,0.54)",
                   }}
@@ -165,10 +185,12 @@ export default function RewardPoolPage() {
           <label style={checkStyle}>
             <input
               type="checkbox"
-              checked={hideAmount}
-              onChange={(event) => setHideAmount(event.target.checked)}
+              checked={values.hideAmount}
+              onChange={(event) =>
+                updateDraft({ hideAmount: event.target.checked })
+              }
             />
-            <span>Hide exact amount and show "reward funded" instead.</span>
+            <span>{'Hide exact amount and show "reward funded" instead.'}</span>
           </label>
 
           <p style={form.hint}>

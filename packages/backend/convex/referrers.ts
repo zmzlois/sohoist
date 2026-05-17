@@ -2,6 +2,31 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { findCurrentUser, requireCurrentUser } from "./session";
 
+function makeToken() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
+ * create a reusable shareable invite link (no specific email/phone target).
+ * returns the raw token so the caller can build the share URL.
+ */
+export const createShareLink = mutation({
+  args: { email: v.optional(v.string()) },
+  handler: async (ctx, { email }) => {
+    const user = await requireCurrentUser(ctx, email);
+    const token = makeToken();
+    await ctx.db.insert("trustedReferrers", {
+      memberId: user._id,
+      inviteToken: token,
+      status: "invited",
+      createdAt: Date.now(),
+    });
+    return token;
+  },
+});
+
 /** invite someone to be a trusted referrer via email or phone */
 export const inviteReferrer = mutation({
   args: {
@@ -16,7 +41,7 @@ export const inviteReferrer = mutation({
       memberId: user._id,
       email,
       phone,
-      inviteToken: Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, "0")).join(""),
+      inviteToken: makeToken(),
       status: "invited",
       createdAt: Date.now(),
     });

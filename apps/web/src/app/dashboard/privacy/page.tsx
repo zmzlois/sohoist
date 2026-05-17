@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@packages/backend/convex/_generated/api";
@@ -52,24 +52,37 @@ export default function PrivacyPage() {
   );
   const updateProfile = useMutation(api.profile.updateProfile);
 
-  const [seeded, setSeeded] = useState(false);
-  const [ghostMode, setGhostMode] = useState(true);
-  const [visibility, setVisibility] = useState<Visibility>("referrers_only");
-  const [hideRewardAmount, setHideRewardAmount] = useState(false);
-  const [hideCity, setHideCity] = useState(false);
-  const [hideProfession, setHideProfession] = useState(false);
+  const [draft, setDraft] = useState<{
+    ghostMode: boolean;
+    visibility: Visibility;
+    hideRewardAmount: boolean;
+    hideCity: boolean;
+    hideProfession: boolean;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    if (!profile || seeded) return;
-    setGhostMode(profile.ghostMode);
-    setVisibility(profile.visibility as Visibility);
-    setHideRewardAmount(profile.hideRewardAmount);
-    setHideCity(profile.hideCity);
-    setHideProfession(profile.hideProfession);
-    setSeeded(true);
-  }, [profile, seeded]);
+  const values =
+    draft ??
+    (profile
+      ? {
+          ghostMode: profile.ghostMode,
+          visibility: profile.visibility as Visibility,
+          hideRewardAmount: profile.hideRewardAmount,
+          hideCity: profile.hideCity,
+          hideProfession: profile.hideProfession,
+        }
+      : {
+          ghostMode: true,
+          visibility: "referrers_only" as Visibility,
+          hideRewardAmount: false,
+          hideCity: false,
+          hideProfession: false,
+        });
+
+  function updateDraft(patch: Partial<typeof values>) {
+    setDraft({ ...values, ...patch });
+  }
 
   async function handleSave() {
     if (saving || !sessionEmail) return;
@@ -78,11 +91,11 @@ export default function PrivacyPage() {
     try {
       await updateProfile({
         email: sessionEmail,
-        ghostMode,
-        visibility,
-        hideRewardAmount,
-        hideCity,
-        hideProfession,
+        ghostMode: values.ghostMode,
+        visibility: values.visibility,
+        hideRewardAmount: values.hideRewardAmount,
+        hideCity: values.hideCity,
+        hideProfession: values.hideProfession,
       });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2000);
@@ -121,8 +134,8 @@ export default function PrivacyPage() {
             <ToggleRow
               label="Ghost Mode"
               note="When on, your profile is hidden from browsing surfaces and only appears where you explicitly allow it."
-              value={ghostMode}
-              onChange={setGhostMode}
+              value={values.ghostMode}
+              onChange={(value) => updateDraft({ ghostMode: value })}
             />
 
             <div>
@@ -132,15 +145,15 @@ export default function PrivacyPage() {
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setVisibility(option.value)}
+                    onClick={() => updateDraft({ visibility: option.value })}
                     style={{
                       ...visibilityStyle,
                       borderColor:
-                        visibility === option.value
+                        values.visibility === option.value
                           ? palette.teal
                           : palette.border,
                       backgroundColor:
-                        visibility === option.value
+                        values.visibility === option.value
                           ? "rgba(143,175,179,0.14)"
                           : "rgba(245,239,230,0.52)",
                     }}
@@ -157,20 +170,20 @@ export default function PrivacyPage() {
             <ToggleRow
               label="Hide reward amount"
               note='Show "reward funded" instead of the exact amount.'
-              value={hideRewardAmount}
-              onChange={setHideRewardAmount}
+              value={values.hideRewardAmount}
+              onChange={(value) => updateDraft({ hideRewardAmount: value })}
             />
             <ToggleRow
               label="Hide exact city"
               note="Show broader context without exposing your exact location."
-              value={hideCity}
-              onChange={setHideCity}
+              value={values.hideCity}
+              onChange={(value) => updateDraft({ hideCity: value })}
             />
             <ToggleRow
               label="Hide profession"
               note="Keep work context out of the intro brief."
-              value={hideProfession}
-              onChange={setHideProfession}
+              value={values.hideProfession}
+              onChange={(value) => updateDraft({ hideProfession: value })}
             />
 
             <button

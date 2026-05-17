@@ -18,6 +18,9 @@ export default function InviteReferrerPage() {
   const { data: session } = useSession();
   const sessionEmail = session?.user?.email ?? "";
   const inviteReferrer = useMutation(api.referrers.inviteReferrer);
+  const createShareLink = useMutation(api.referrers.createShareLink);
+  const approveReferrer = useMutation(api.referrers.approveReferrer);
+  const removeReferrer = useMutation(api.referrers.removeReferrer);
   const referrers = useQuery(
     api.referrers.getMyReferrers,
     sessionEmail ? { email: sessionEmail } : "skip",
@@ -28,6 +31,8 @@ export default function InviteReferrerPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+  const [acting, setActing] = useState("");
 
   const canInvite = Boolean(email.trim() || phone.trim()) && !saving;
 
@@ -52,6 +57,37 @@ export default function InviteReferrerPage() {
       setError("Couldn't create the invite. Try again.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCreateShareLink() {
+    if (!sessionEmail) return;
+    setActing("share");
+    setError("");
+    try {
+      const token = await createShareLink({ email: sessionEmail });
+      setShareUrl(`${window.location.origin}/invite/${token}`);
+    } catch {
+      setError("Couldn't create a private link. Try again.");
+    } finally {
+      setActing("");
+    }
+  }
+
+  async function handleStatus(
+    referrerId: string,
+    action: "approved" | "removed",
+  ) {
+    if (!sessionEmail) return;
+    setActing(`${referrerId}:${action}`);
+    try {
+      if (action === "approved") {
+        await approveReferrer({ referrerId: referrerId as any, email: sessionEmail });
+      } else {
+        await removeReferrer({ referrerId: referrerId as any, email: sessionEmail });
+      }
+    } finally {
+      setActing("");
     }
   }
 
@@ -110,6 +146,37 @@ export default function InviteReferrerPage() {
         </PaperCard>
 
         <PaperCard>
+          <SectionHeading label="Private share link" />
+          <p style={form.hint}>
+            Create a reusable invitation link for someone you trust. They still
+            need to sign in, accept the invite, and be approved before
+            submitting referrals.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={handleCreateShareLink}
+              disabled={acting === "share"}
+              style={form.secondary}
+            >
+              {acting === "share" ? "Creating..." : "Create private link"}
+            </button>
+            {shareUrl ? (
+              <button
+                type="button"
+                onClick={() => navigator.clipboard?.writeText(shareUrl)}
+                style={form.primary}
+              >
+                Copy link
+              </button>
+            ) : null}
+          </div>
+          {shareUrl ? (
+            <input readOnly value={shareUrl} style={{ ...form.input, marginTop: 12 }} />
+          ) : null}
+        </PaperCard>
+
+        <PaperCard>
           <SectionHeading
             label="Current circle"
             detail={referrers ? `${referrers.length} invited` : "Loading"}
@@ -124,12 +191,39 @@ export default function InviteReferrerPage() {
             <div style={{ display: "grid", gap: 10 }}>
               {referrers.map((referrer: any) => (
                 <div key={referrer._id} style={rowStyle}>
-                  <span>
-                    {referrer.email ?? referrer.phone ?? "Private invite"}
-                  </span>
-                  <StatusBadge tone={statusTone(referrer.status)}>
-                    {referrer.status}
-                  </StatusBadge>
+                  <div>
+                    <span>
+                      {referrer.email ?? referrer.phone ?? "Private invite"}
+                    </span>
+                    <p style={smallMutedStyle}>
+                      /invite/{referrer.inviteToken}
+                    </p>
+                  </div>
+                  <div style={rowActionsStyle}>
+                    <StatusBadge tone={statusTone(referrer.status)}>
+                      {referrer.status}
+                    </StatusBadge>
+                    {referrer.status === "accepted" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleStatus(referrer._id, "approved")}
+                        disabled={Boolean(acting)}
+                        style={miniButtonStyle}
+                      >
+                        Approve
+                      </button>
+                    ) : null}
+                    {referrer.status !== "removed" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleStatus(referrer._id, "removed")}
+                        disabled={Boolean(acting)}
+                        style={miniButtonStyle}
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -160,4 +254,32 @@ const rowStyle: React.CSSProperties = {
   fontFamily: palette.body,
   fontSize: 14,
   color: palette.ink,
+};
+
+const rowActionsStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  flexWrap: "wrap",
+  gap: 8,
+};
+
+const miniButtonStyle: React.CSSProperties = {
+  minHeight: 28,
+  borderRadius: 999,
+  border: `1px solid ${palette.borderHard}`,
+  backgroundColor: "transparent",
+  color: palette.ink,
+  fontFamily: palette.body,
+  fontSize: 12,
+  padding: "0 10px",
+  cursor: "pointer",
+};
+
+const smallMutedStyle: React.CSSProperties = {
+  margin: "3px 0 0",
+  color: palette.stone,
+  opacity: 0.65,
+  fontFamily: palette.mono,
+  fontSize: 11,
 };

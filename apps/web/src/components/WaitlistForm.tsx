@@ -23,7 +23,7 @@ export default function WaitlistForm() {
             color: "#F5EFE6",
           }}
         >
-          You're on the list.
+          You&apos;re on the list.
         </p>
         <p
           style={{
@@ -33,7 +33,7 @@ export default function WaitlistForm() {
             marginTop: "8px",
           }}
         >
-          We'll reach out when your city circle opens.
+          We&apos;ll reach out when your city circle opens.
         </p>
       </div>
     );
