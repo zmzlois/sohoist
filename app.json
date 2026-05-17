@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Sohoist",
+    "url": "sohoist.com",
+    "currentFullName": "@sf-model/sohoist",
+    "scheme": "sohoist",
+    "extra": {
+      "eas": {
+        "projectId": "8abb7cce-c519-4ebb-b18a-0f5408efdb02"
+      }
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "root": "./apps/native/src/app"
+        }
+      ]
+    ],
+    "android": {
+      "package": "com.sf_model.sohoist"
+    },
+    "ios": {
+      "bundleIdentifier": "com.sf-model.sohoist",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

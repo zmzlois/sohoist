@@ -1,6 +1,7 @@
 {
-  "name": "wing-men.cc",
+  "name": "@sf-voice/sohoist",
   "private": true,
+  "main": "apps/native/index.tsx",
   "scripts": {
     "predev": "sh scripts/sync-env.sh",
     "dev": "turbo run dev",

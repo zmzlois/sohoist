@@ -141,7 +141,7 @@ Use: "Private by default." / "Discretion is built in." / "You control what's vis
 
 ## What This Product Is
 
-**Sohoist** (formerly wing-men.cc) is an intentional matchmaking platform — the antithesis of swipe culture. Matches come exclusively through real friends who refer people they genuinely know. No algorithm selects strangers. No infinite scroll. No dopamine loops.
+**Sohoist** is an intentional matchmaking platform — the antithesis of swipe culture. Matches come exclusively through real friends who refer people they genuinely know. No algorithm selects strangers. No infinite scroll. No dopamine loops.
 
 Your friends are your wing men. They vouch for you, introduce you, and confirm you've found someone.
 
