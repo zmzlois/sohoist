@@ -66,6 +66,17 @@ export const getMyReferrals = query({
       .withIndex("by_memberId", (q: any) => q.eq("memberId", user._id))
       .order("desc")
       .collect();
+
+    return await Promise.all(
+      rows.map(async (referral) => {
+        const referrer = await ctx.db.get(referral.referrerId);
+        return {
+          ...referral,
+          referrerName:
+            referrer?.name ?? referrer?.email?.split("@")[0] ?? "A friend",
+        };
+      }),
+    );
   },
 });
 

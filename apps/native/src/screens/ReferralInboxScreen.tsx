@@ -95,7 +95,7 @@ export default function ReferralInboxScreen() {
   };
 
   const filteredReferrals =
-    referrals?.filter((r) => matchesFilter(r.status, activeFilter)) ?? [];
+    referrals?.filter((r: any) => matchesFilter(r.status, activeFilter)) ?? [];
 
   return (
     <View style={styles.root}>
@@ -171,7 +171,7 @@ export default function ReferralInboxScreen() {
           )}
 
           {/* referral cards */}
-          {filteredReferrals.map((referral) => {
+          {filteredReferrals.map((referral: any) => {
             const isActionable =
               referral.status === "submitted" || referral.status === "viewed";
             const isResponding = responding === referral._id;

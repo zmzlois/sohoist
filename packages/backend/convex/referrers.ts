@@ -37,6 +37,8 @@ export const getMyReferrers = query({
       .withIndex("by_memberId", (q: any) => q.eq("memberId", user._id))
       .order("desc")
       .collect();
+
+    return rows;
   },
 });
 

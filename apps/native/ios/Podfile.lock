@@ -107,8 +107,6 @@ PODS:
   - ExpoRouter (55.0.14):
     - ExpoModulesCore
     - RNScreens
-  - ExpoSecureStore (55.0.14):
-    - ExpoModulesCore
   - ExpoSymbols (55.0.8):
     - ExpoModulesCore
   - ExpoSystemUI (55.0.18):
@@ -2225,7 +2223,6 @@ DEPENDENCIES:
   - ExpoModulesCore (from `../../../node_modules/expo-modules-core`)
   - ExpoModulesJSI (from `../../../node_modules/expo-modules-core`)
   - ExpoRouter (from `../../../node_modules/expo-router/ios`)
-  - ExpoSecureStore (from `../../../node_modules/expo-secure-store/ios`)
   - ExpoSymbols (from `../../../node_modules/expo-symbols/ios`)
   - ExpoSystemUI (from `../../../node_modules/expo-system-ui/ios`)
   - FBLazyVector (from `../../../node_modules/react-native/Libraries/FBLazyVector`)
@@ -2351,8 +2348,6 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/expo-modules-core"
   ExpoRouter:
     :path: "../../../node_modules/expo-router/ios"
-  ExpoSecureStore:
-    :path: "../../../node_modules/expo-secure-store/ios"
   ExpoSymbols:
     :path: "../../../node_modules/expo-symbols/ios"
   ExpoSystemUI:
@@ -2532,7 +2527,6 @@ SPEC CHECKSUMS:
   ExpoModulesCore: 5e1ad569ce7cf8d35c0737585f34cc299fc3f0ca
   ExpoModulesJSI: 964334271fc77832736f66ee1785761cdc778dbe
   ExpoRouter: 0948f6a7c3949e8405099663e55d149408afc021
-  ExpoSecureStore: 0e7959ad3a9fa59306d55f26a37854640dd334c2
   ExpoSymbols: 446a0835f3fb505214891d72baf5edf1de2ee4e7
   ExpoSystemUI: fbc4f8af83f2b8338c1de69a79624769536f09d1
   FBLazyVector: 427fa1856a481856091061293ce865a75aa4f20f
@@ -2621,6 +2615,6 @@ SPEC CHECKSUMS:
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Yoga: e41d64347f52d634dd8c2f6bac33f95081959fd3
 
-PODFILE CHECKSUM: 95e39449141fa92654cfcac0a367a0933c74d571
+PODFILE CHECKSUM: 35e9d909fd158d33a0570133203771943547d14e
 
 COCOAPODS: 1.16.2
