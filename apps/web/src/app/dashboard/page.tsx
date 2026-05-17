@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@packages/backend/convex/_generated/api";
 
 const ADMIN_EMAIL = "lois@sf-voice.sh";
+const PORTRAIT_STORAGE_PREFIX = "sohoist:web:pencilPortrait";
 
 // ─── shared style tokens ────────────────────────────────────────────────────
 
@@ -22,7 +23,7 @@ const t = {
   borderHard: "rgba(43,42,40,0.18)",
   display: "var(--font-cormorant), 'Cormorant Garamond', Georgia, serif",
   body: "var(--font-inter), Inter, sans-serif",
-  mono: "var(--font-ibm-mono), 'IBM Plex Mono', monospace",
+  mono: "var(--font-ibm-mono, ui-monospace), 'IBM Plex Mono', monospace",
 };
 
 // ─── main page ──────────────────────────────────────────────────────────────
@@ -31,10 +32,18 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const upsertUser = useMutation(api.users.upsertUser);
   const reviewApplication = useMutation(api.admin.reviewApplication);
+  const inviteReferrer = useMutation(api.referrers.inviteReferrer);
 
   const [acting, setActing] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [notesMap, setNotesMap] = useState<Record<string, string>>({});
+  const [portraitOriginal, setPortraitOriginal] = useState("");
+  const [portraitSketch, setPortraitSketch] = useState("");
+  const [portraitStatus, setPortraitStatus] = useState("");
+  const [portraitError, setPortraitError] = useState("");
+  const [inviteContact, setInviteContact] = useState("");
+  const [inviteStatus, setInviteStatus] = useState("");
+  const [inviteError, setInviteError] = useState("");
 
   const sessionEmail = session?.user?.email ?? "";
   const sessionName = session?.user?.name ?? undefined;
@@ -105,6 +114,57 @@ export default function DashboardPage() {
         email: sessionEmail,
         notes: notesMap[applicationId],
       });
+    } finally {
+      setActing(null);
+    }
+  }
+
+  async function handlePortraitUpload(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = event.target.files?.[0];
+    if (!file || !sessionEmail) return;
+
+    setPortraitStatus("Creating pencil sketch...");
+    setPortraitError("");
+
+    try {
+      const original = await readFileAsDataUrl(file);
+      const sketch = await createPencilSketch(original);
+      setPortraitOriginal(original);
+      setPortraitSketch(sketch);
+      localStorage.setItem(
+        `${PORTRAIT_STORAGE_PREFIX}:${sessionEmail}`,
+        JSON.stringify({ original, sketch }),
+      );
+      setPortraitStatus("Pencil sketch ready.");
+    } catch {
+      setPortraitError("Couldn't create the sketch. Try a smaller image.");
+      setPortraitStatus("");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  async function handleInviteFriend(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const contact = inviteContact.trim();
+    if (!contact || !sessionEmail || acting) return;
+
+    setActing("invite");
+    setInviteStatus("");
+    setInviteError("");
+
+    try {
+      await inviteReferrer({
+        sessionEmail,
+        email: contact.includes("@") ? contact : undefined,
+        phone: contact.includes("@") ? undefined : contact,
+      });
+      setInviteContact("");
+      setInviteStatus("Invite saved to your trusted circle.");
+    } catch {
+      setInviteError("Couldn't invite this friend. Try again.");
     } finally {
       setActing(null);
     }
@@ -445,46 +505,98 @@ export default function DashboardPage() {
             <SectionHeader label="My Profile" />
 
             <div style={s.card}>
-              {/* photo placeholder + upload */}
+              {/* photo upload + browser-side sketch preview */}
               <div
                 style={{
                   height: 180,
                   borderRadius: 14,
                   marginBottom: 16,
-                  backgroundColor: "rgba(220,230,234,0.4)",
-                  border: `1px dashed ${t.borderHard}`,
+                  backgroundColor: portraitSketch
+                    ? "rgba(245,239,230,0.72)"
+                    : "rgba(220,230,234,0.4)",
+                  border: portraitSketch
+                    ? `1px solid ${t.border}`
+                    : `1px dashed ${t.borderHard}`,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
+                  overflow: "hidden",
+                  position: "relative",
                 }}
               >
-                <p
-                  style={{
-                    fontFamily: t.display,
-                    fontStyle: "italic",
-                    fontSize: 36,
-                    margin: 0,
-                    opacity: 0.3,
-                  }}
-                >
-                  🖊
-                </p>
-                <p
-                  style={{
-                    fontFamily: t.body,
-                    fontSize: 12,
-                    color: t.stone,
-                    margin: 0,
-                  }}
-                >
-                  Pencil portrait
-                </p>
+                {portraitSketch ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={portraitSketch}
+                      alt="Generated pencil portrait"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                    <span
+                      style={{
+                        position: "absolute",
+                        left: 12,
+                        bottom: 12,
+                        fontFamily: t.body,
+                        fontSize: 9,
+                        fontWeight: 500,
+                        letterSpacing: "1px",
+                        textTransform: "uppercase",
+                        color: t.stone,
+                        backgroundColor: "rgba(245,239,230,0.86)",
+                        borderRadius: 999,
+                        padding: "4px 9px",
+                      }}
+                    >
+                      Pencil portrait
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <p
+                      style={{
+                        fontFamily: t.display,
+                        fontStyle: "italic",
+                        fontSize: 36,
+                        margin: 0,
+                        opacity: 0.3,
+                      }}
+                    >
+                      Pencil
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: t.body,
+                        fontSize: 12,
+                        color: t.stone,
+                        margin: 0,
+                      }}
+                    >
+                      Pencil portrait
+                    </p>
+                  </>
+                )}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: portraitStatus || portraitError ? 8 : 16,
+                }}
+              >
                 <label
                   style={{
                     fontFamily: t.body,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 500,
                     color: t.teal,
                     cursor: "pointer",
@@ -492,16 +604,67 @@ export default function DashboardPage() {
                     textUnderlineOffset: 3,
                   }}
                 >
-                  Upload photo
-                  {/* photo upload wired to Convex storage — see TODOS.md */}
+                  {portraitSketch ? "Change photo" : "Upload photo"}
                   <input
                     type="file"
                     accept="image/*"
                     style={{ display: "none" }}
-                    disabled
+                    onChange={handlePortraitUpload}
                   />
                 </label>
+                {portraitOriginal && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setPortraitStatus("Regenerating sketch...");
+                      setPortraitError("");
+                      try {
+                        const sketch = await createPencilSketch(portraitOriginal);
+                        setPortraitSketch(sketch);
+                        localStorage.setItem(
+                          `${PORTRAIT_STORAGE_PREFIX}:${sessionEmail}`,
+                          JSON.stringify({ original: portraitOriginal, sketch }),
+                        );
+                        setPortraitStatus("Pencil sketch ready.");
+                      } catch {
+                        setPortraitError("Couldn't regenerate the sketch.");
+                        setPortraitStatus("");
+                      }
+                    }}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      color: t.stone,
+                      fontFamily: t.body,
+                      fontSize: 12,
+                      cursor: "pointer",
+                      padding: 0,
+                      textDecoration: "underline",
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    Regenerate sketch
+                  </button>
+                )}
               </div>
+              {portraitStatus && (
+                <p style={{ ...s.muted, textAlign: "center", marginBottom: 12 }}>
+                  {portraitStatus}
+                </p>
+              )}
+              {portraitError && (
+                <p
+                  style={{
+                    fontFamily: t.body,
+                    fontSize: 12,
+                    color: "#9B352B",
+                    textAlign: "center",
+                    margin: "0 0 12px",
+                  }}
+                >
+                  {portraitError}
+                </p>
+              )}
 
               {/* profile content */}
               {profile ? (
@@ -675,7 +838,7 @@ export default function DashboardPage() {
                     lineHeight: 1.55,
                   }}
                 >
-                  Invite trusted friends who know your taste and who you'd
+                  Invite trusted friends who know your taste and who you&apos;d
                   actually click with.
                 </p>
               </div>
@@ -723,28 +886,157 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <div style={{ marginTop: 14 }}>
-              <a
-                href="/dashboard/invite"
+            <form
+              onSubmit={handleInviteFriend}
+              style={{
+                marginTop: 14,
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                gap: 8,
+              }}
+            >
+              <input
+                value={inviteContact}
+                onChange={(event) => {
+                  setInviteContact(event.target.value);
+                  setInviteStatus("");
+                  setInviteError("");
+                }}
+                placeholder="friend@example.com"
+                aria-label="Friend email or phone"
                 style={{
-                  display: "block",
-                  textAlign: "center",
                   fontFamily: t.body,
                   fontSize: 13,
-                  color: t.stone,
-                  textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                  opacity: 0.65,
+                  color: t.ink,
+                  backgroundColor: "rgba(245,239,230,0.7)",
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 999,
+                  padding: "0 14px",
+                  height: 40,
+                  minWidth: 0,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+              <button
+                type="submit"
+                disabled={!inviteContact.trim() || acting === "invite"}
+                style={{
+                  fontFamily: t.body,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: t.paper,
+                  backgroundColor: t.ink,
+                  border: "none",
+                  borderRadius: 999,
+                  padding: "0 16px",
+                  height: 40,
+                  cursor:
+                    inviteContact.trim() && acting !== "invite"
+                      ? "pointer"
+                      : "default",
+                  opacity: inviteContact.trim() && acting !== "invite" ? 1 : 0.45,
                 }}
               >
-                + Invite a friend
-              </a>
-            </div>
+                {acting === "invite" ? "Inviting..." : "Invite"}
+              </button>
+            </form>
+            {inviteStatus && (
+              <p style={{ ...s.muted, marginTop: 8 }}>{inviteStatus}</p>
+            )}
+            {inviteError && (
+              <p
+                style={{
+                  fontFamily: t.body,
+                  fontSize: 12,
+                  color: "#9B352B",
+                  margin: "8px 0 0",
+                }}
+              >
+                {inviteError}
+              </p>
+            )}
           </section>
         </div>
       </main>
     </div>
   );
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      typeof reader.result === "string"
+        ? resolve(reader.result)
+        : reject(new Error("Invalid file result"));
+    reader.onerror = () => reject(reader.error ?? new Error("Read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadBrowserImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Image load failed"));
+    image.src = src;
+  });
+}
+
+async function createPencilSketch(src: string) {
+  const image = await loadBrowserImage(src);
+  const maxSide = 900;
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas unavailable");
+
+  ctx.drawImage(image, 0, 0, width, height);
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const { data } = imageData;
+  const luminance = new Uint8ClampedArray(width * height);
+
+  for (let i = 0; i < data.length; i += 4) {
+    luminance[i / 4] = Math.round(
+      data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114,
+    );
+  }
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      const right = luminance[y * width + Math.min(width - 1, x + 1)];
+      const down = luminance[Math.min(height - 1, y + 1) * width + x];
+      const edge =
+        Math.abs(luminance[index] - right) + Math.abs(luminance[index] - down);
+      const shade = Math.max(34, 245 - edge * 3.4 - (255 - luminance[index]) * 0.18);
+      const warm = Math.round(shade);
+      const offset = index * 4;
+      data[offset] = warm;
+      data[offset + 1] = Math.max(0, warm - 3);
+      data[offset + 2] = Math.max(0, warm - 9);
+      data[offset + 3] = 255;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  ctx.globalCompositeOperation = "multiply";
+  ctx.strokeStyle = "rgba(43,42,40,0.11)";
+  ctx.lineWidth = 0.8;
+  for (let y = 8; y < height; y += 13) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y + Math.sin(y) * 3);
+    ctx.stroke();
+  }
+
+  return canvas.toDataURL("image/jpeg", 0.9);
 }
 
 // ─── sub-components ──────────────────────────────────────────────────────────

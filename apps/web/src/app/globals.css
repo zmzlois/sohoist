@@ -26,7 +26,7 @@
   /* typography — display, body, mono */
   --font-display:  var(--font-cormorant), "Cormorant Garamond", Georgia, serif;
   --font-body:     var(--font-inter), Inter, sans-serif;
-  --font-mono:     var(--font-ibm-mono), "IBM Plex Mono", "Courier New", monospace;
+  --font-mono:     var(--font-ibm-mono, ui-monospace), "IBM Plex Mono", "Courier New", monospace;
 
   /* radius scale */
   --radius-sm:     10px;

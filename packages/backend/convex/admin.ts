@@ -15,24 +15,41 @@ const applicationStatus = v.union(
   v.literal("rejected"),
 );
 
-/** verify caller is an admin — throws otherwise */
-async function requireAdmin(ctx: { auth: any; db: any }, email?: string) {
-  let user = await findCurrentUser(ctx, email);
+/** verify caller is an admin. Safe for queries: never writes. */
+async function requireAdminAccess(ctx: { auth: any; db: any }, email?: string) {
+  const user = await findCurrentUser(ctx, email);
   const normalizedEmail = normalizeEmail(email);
 
-  if (!user && normalizedEmail === ADMIN_EMAIL) {
+  if (normalizedEmail === ADMIN_EMAIL) return user;
+  if (!user || user.role !== "admin") throw new Error("Admin access required");
+  return user;
+}
+
+/** verify caller is an admin and ensure there is a user row for audit writes. */
+async function requireAdminUser(ctx: { auth: any; db: any }, email?: string) {
+  const accessUser = await requireAdminAccess(ctx, email);
+  const normalizedEmail = normalizeEmail(email);
+
+  if (accessUser) {
+    if (normalizedEmail === ADMIN_EMAIL && accessUser.role !== "admin") {
+      await ctx.db.patch(accessUser._id, { role: "admin" });
+      return { ...accessUser, role: "admin" as const };
+    }
+    return accessUser;
+  }
+
+  if (normalizedEmail === ADMIN_EMAIL) {
     const userId = await ctx.db.insert("users", {
       email: normalizedEmail,
       name: "Lois",
       role: "admin",
       createdAt: Date.now(),
     });
-    user = await ctx.db.get(userId);
+    const user = await ctx.db.get(userId);
+    if (user) return user;
   }
 
-  if (!user) user = await requireCurrentUser(ctx, email);
-  if (!user || user.role !== "admin") throw new Error("Admin access required");
-  return user;
+  return await requireCurrentUser(ctx, email);
 }
 
 /** list all membership applications, optionally filtered by status */
@@ -42,7 +59,7 @@ export const listApplications = query({
     status: v.optional(applicationStatus),
   },
   handler: async (ctx, { email, status }) => {
-    await requireAdmin(ctx, email);
+    await requireAdminAccess(ctx, email);
 
     if (status) {
       return await ctx.db
@@ -70,7 +87,7 @@ export const reviewApplication = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { applicationId, email, action, notes }) => {
-    const admin = await requireAdmin(ctx, email);
+    const admin = await requireAdminUser(ctx, email);
 
     const application = await ctx.db.get(applicationId);
     if (!application) throw new Error("Application not found");

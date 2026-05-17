@@ -1,0 +1,64 @@
+# ── dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── environment variables ──────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# ── build outputs ──────────────────────────────────────────────────────────────
+dist/
+build/
+out/
+.next/
+.expo/
+
+# ── turbo ─────────────────────────────────────────────────────────────────────
+.turbo/
+
+# ── typescript ────────────────────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ── vercel ────────────────────────────────────────────────────────────────────
+.vercel/
+
+# ── clerk keyless dev keys ─────────────────────────────────────────────────────
+# these are auto-generated throwaway keys for local dev — not secrets, but noisy
+.clerk/
+
+# ── convex generated types ────────────────────────────────────────────────────
+# convex dev regenerates these automatically — no need to commit them
+packages/backend/convex/_generated/
+
+# ── expo / react native ───────────────────────────────────────────────────────
+apps/native/ios/build/
+apps/native/ios/Pods/
+apps/native/android/build/
+apps/native/android/.gradle/
+apps/native/android/app/build/
+
+# ios xcode env — contains local machine paths, not portable
+apps/native/ios/.xcode.env.local
+
+# ── logs ──────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── macos ─────────────────────────────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+
+# ── editors ───────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── test coverage ─────────────────────────────────────────────────────────────
+coverage/
