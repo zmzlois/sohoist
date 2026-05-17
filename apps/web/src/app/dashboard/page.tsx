@@ -301,15 +301,8 @@ export default function DashboardPage() {
     <div style={{ minHeight: "100vh", backgroundColor: t.paper }}>
       {/* ── header ──────────────────────────────────────────────────────────── */}
       <header
-        style={{
-          borderBottom: `1px solid ${t.border}`,
-          padding: "20px 32px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          maxWidth: 1180,
-          margin: "0 auto",
-        }}
+        className="max-w-[1180px] mx-auto flex justify-between items-center flex-wrap gap-3 px-4 sm:px-8 py-4 sm:py-5"
+        style={{ borderBottom: `1px solid ${t.border}` }}
       >
         <div>
           <p
@@ -340,6 +333,7 @@ export default function DashboardPage() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <p
+            className="truncate max-w-[120px] sm:max-w-none"
             style={{
               fontFamily: t.body,
               fontSize: 12,
@@ -369,9 +363,7 @@ export default function DashboardPage() {
       </header>
 
       {/* ── body ────────────────────────────────────────────────────────────── */}
-      <main
-        style={{ maxWidth: 1180, margin: "0 auto", padding: "40px 32px 80px" }}
-      >
+      <main className="max-w-[1180px] mx-auto px-4 sm:px-8 pt-8 sm:pt-10 pb-16 sm:pb-20">
         {/* welcome line */}
         <p
           style={{
@@ -449,7 +441,11 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              <a href={nextStep.href} style={{ ...s.primaryBtn, padding: "0 24px" }}>
+              <a
+                href={nextStep.href}
+                className="mx-auto sm:mx-0"
+                style={{ ...s.primaryBtn, padding: "0 24px" }}
+              >
                 {nextStep.cta}
               </a>
             </div>
@@ -705,14 +701,7 @@ export default function DashboardPage() {
         )}
 
         {/* ── two-column layout on desktop ──────────────────────────────────── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-            alignItems: "start",
-          }}
-        >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
           {/* ── col 1: my profile ─────────────────────────────────────────── */}
           <section>
             <SectionHeader label="My Profile" />
@@ -977,12 +966,13 @@ export default function DashboardPage() {
               )}
 
               {/* share button */}
-              <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   onClick={handleCopy}
                   style={{
                     ...s.primaryBtn,
-                    flex: 1,
+                    width: "100%",
+                    textAlign: "center",
                     backgroundColor: copied ? "#4CAF83" : t.ink,
                     transition: "background-color 0.2s",
                   }}
@@ -993,7 +983,9 @@ export default function DashboardPage() {
                   href="/dashboard/shared-preview"
                   style={{
                     ...s.primaryBtn,
-                    flex: 1,
+                    width: "100%",
+                    textAlign: "center",
+                    lineHeight: "48px",
                     backgroundColor: "transparent",
                     color: t.ink,
                     border: `1px solid ${t.borderHard}`,
@@ -1006,7 +998,9 @@ export default function DashboardPage() {
                   href="/dashboard/photo"
                   style={{
                     ...s.primaryBtn,
-                    flex: 1,
+                    width: "100%",
+                    textAlign: "center",
+                    lineHeight: "48px",
                     backgroundColor: "transparent",
                     color: t.ink,
                     border: `1px solid ${t.borderHard}`,
@@ -1380,7 +1374,9 @@ const s = {
   } as React.CSSProperties,
 
   primaryBtn: {
-    display: "block",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
     height: 48,
     borderRadius: 999,
     backgroundColor: t.ink,
@@ -1391,6 +1387,8 @@ const s = {
     fontWeight: 500,
     cursor: "pointer",
     letterSpacing: "0.01em",
+    textAlign: "center",
+    textDecoration: "none",
   } as React.CSSProperties,
 
   tag: {

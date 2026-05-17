@@ -97,50 +97,50 @@ export default function Home() {
           alignItems: "center",
         }}
       >
-      <div
-        style={{
-          padding: "0 28px",
-          maxWidth: "1180px",
-          width: "100%",
-          marginInline: "auto",
-        }}
-      >
-        <p
-          className="text-label"
-          style={{ color: "var(--color-muted-teal)", marginBottom: "18px" }}
-        >
-          By introduction only
-        </p>
-
-        <h1
-          className="text-display"
+        <div
           style={{
-            fontSize: "clamp(2.8rem, 5.5vw, 5rem)",
-            color: "#F5EFE6",
-            lineHeight: 1.0,
-            maxWidth: "680px",
-            marginBottom: "20px",
+            padding: "0 28px",
+            maxWidth: "1180px",
+            width: "100%",
+            marginInline: "auto",
           }}
         >
-          Low-stakes dating, <em>matched by vibe</em> in real life.
-        </h1>
+          <p
+            className="text-label"
+            style={{ color: "var(--color-muted-teal)", marginBottom: "18px" }}
+          >
+            By introduction only
+          </p>
 
-        <p
-          style={{
-            fontFamily: "var(--font-body)",
-            fontSize: "15px",
-            color: "rgba(245,239,230,0.68)",
-            maxWidth: "420px",
-            lineHeight: 1.7,
-            marginBottom: "28px",
-          }}
-        >
-          A private introduction network where trusted people make thoughtful
-          matches — not endless swiping.
-        </p>
+          <h1
+            className="text-display"
+            style={{
+              fontSize: "clamp(2.8rem, 5.5vw, 5rem)",
+              color: "#F5EFE6",
+              lineHeight: 1.0,
+              maxWidth: "680px",
+              marginBottom: "20px",
+            }}
+          >
+            Low-stakes dating, <em>match by vibe</em> in real life.
+          </h1>
 
-        <WaitlistForm />
-      </div>
+          <p
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: "15px",
+              color: "rgba(245,239,230,0.68)",
+              maxWidth: "420px",
+              lineHeight: 1.7,
+              marginBottom: "28px",
+            }}
+          >
+            A private introduction network where trusted people make thoughtful
+            matches — not endless swiping.
+          </p>
+
+          <WaitlistForm />
+        </div>
       </div>
     </main>
   );

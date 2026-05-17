@@ -38,7 +38,10 @@ export function MemberScaffold({
 }) {
   return (
     <div style={styles.page}>
-      <header style={styles.header}>
+      <header
+        className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-[18px] max-w-[1180px] mx-auto px-4 sm:px-8 py-4 sm:py-5"
+        style={{ borderBottom: `1px solid ${palette.border}` }}
+      >
         <Link href="/dashboard" style={styles.wordmarkWrap}>
           <Image src={logoMark} alt="" style={styles.logoMark} priority />
           <span>
@@ -46,7 +49,7 @@ export function MemberScaffold({
             <span style={styles.wordmarkLabel}>Private Introductions</span>
           </span>
         </Link>
-        <nav style={styles.nav}>
+        <nav className="flex items-center flex-wrap gap-2 sm:gap-[14px] sm:justify-end">
           <Link href="/dashboard/voice" style={styles.navLink}>
             Voice
           </Link>
@@ -76,10 +79,8 @@ export function MemberScaffold({
       </header>
 
       <main
-        style={{
-          ...styles.main,
-          maxWidth: narrow ? 760 : 1040,
-        }}
+        className="w-full mx-auto box-border px-4 sm:px-8 pt-8 sm:pt-[42px] pb-16 sm:pb-[84px]"
+        style={{ maxWidth: narrow ? 760 : 1040 }}
       >
         <section style={styles.hero}>
           {eyebrow ? <p style={styles.eyebrow}>{eyebrow}</p> : null}
@@ -248,16 +249,6 @@ const styles = {
     backgroundColor: palette.paper,
     color: palette.ink,
   } as CSSProperties,
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 18,
-    maxWidth: 1180,
-    margin: "0 auto",
-    padding: "20px 32px",
-    borderBottom: `1px solid ${palette.border}`,
-  } as CSSProperties,
   wordmarkWrap: {
     display: "flex",
     alignItems: "center",
@@ -287,24 +278,11 @@ const styles = {
     color: palette.stone,
     opacity: 0.7,
   } as CSSProperties,
-  nav: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    flexWrap: "wrap",
-    gap: 14,
-  } as CSSProperties,
   navLink: {
     fontFamily: palette.body,
     fontSize: 12,
     color: palette.stone,
     textDecoration: "none",
-  } as CSSProperties,
-  main: {
-    width: "100%",
-    margin: "0 auto",
-    padding: "42px 32px 84px",
-    boxSizing: "border-box",
   } as CSSProperties,
   hero: {
     marginBottom: 28,
