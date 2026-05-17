@@ -19,10 +19,7 @@ export default function VoiceRevealScreen() {
   const { user } = useNativeAuth();
   const [showTranscript, setShowTranscript] = useState(false);
 
-  const profile = useQuery(
-    api.profile.getMyProfile,
-    user?.email ? {} : "skip",
-  );
+  const profile = useQuery(api.profile.getMyProfile, user?.email ? {} : "skip");
   const interview = useQuery(
     api.profile.getMyVoiceInterview,
     user?.email ? { email: user.email } : "skip",
@@ -54,9 +51,7 @@ export default function VoiceRevealScreen() {
       </View>
 
       {/* intro */}
-      <Text style={styles.headline}>
-        Here's what{"\n"}we heard.
-      </Text>
+      <Text style={styles.headline}>Here's what{"\n"}we heard.</Text>
       <Text style={styles.subline}>
         Review your generated intro brief. You can edit any of this.
       </Text>
@@ -82,11 +77,14 @@ export default function VoiceRevealScreen() {
               />
             ) : null}
             {profile?.doNotReferIf ? (
-              <ProfileField label="Don't refer if…" value={profile.doNotReferIf} />
+              <ProfileField
+                label="Don't refer if…"
+                value={profile.doNotReferIf}
+              />
             ) : null}
             {profile?.tags?.length ? (
               <View style={styles.tagsWrap}>
-                {profile.tags.map((tag) => (
+                {profile.tags.map((tag: string) => (
                   <View key={tag} style={components.badge}>
                     <Text style={components.badgeText}>{tag}</Text>
                   </View>
@@ -96,7 +94,8 @@ export default function VoiceRevealScreen() {
           </>
         ) : (
           <Text style={styles.emptyNote}>
-            Your answers were saved. Tap "Edit your profile" to review and fill in the details.
+            Your answers were saved. Tap "Edit your profile" to review and fill
+            in the details.
           </Text>
         )}
       </View>

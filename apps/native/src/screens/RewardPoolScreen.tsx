@@ -141,7 +141,12 @@ export default function RewardPoolScreen() {
     if (saving) return;
     setSaving(tier);
     try {
-      await createRewardPool({ amount, depositTier: tier, email: user?.email });
+      await createRewardPool({
+        amount,
+        depositTier: tier,
+        termsAccepted: true,
+        email: user?.email,
+      });
     } finally {
       setSaving(null);
     }
@@ -169,14 +174,14 @@ export default function RewardPoolScreen() {
 
           <Text style={styles.headline}>Your private reward.</Text>
           <Text style={styles.subline}>
-            Held in trust. Releases after a verified six-month relationship.
+            Saved locally for now. Releases after a verified six-month relationship once payments are connected.
           </Text>
 
           <View style={styles.poolCard}>
             <View style={styles.poolRow}>
               <Text style={styles.poolFieldLabel}>Amount</Text>
               <Text style={styles.poolAmount}>
-                {pool.hideAmount ? "Private" : `$${pool.amount}`}
+                {pool.hideAmount ? "Private" : `$${Math.round(pool.amount / 100)}`}
               </Text>
             </View>
             <View style={styles.poolDivider} />
@@ -197,7 +202,7 @@ export default function RewardPoolScreen() {
           </View>
 
           <Text style={styles.trustNote}>
-            Funds are held in escrow. Released only after a verified relationship reaches six months, with no open disputes.
+            Payment is local-only for now. No card is charged and no money moves from this screen.
           </Text>
 
           <TouchableOpacity
@@ -214,6 +219,9 @@ export default function RewardPoolScreen() {
           <Envelope />
 
           <Text style={styles.headline}>Set your private reward.</Text>
+          <Text style={styles.subline}>
+            This saves the reward signal locally. Payment collection stays off until checkout is connected.
+          </Text>
 
           {/* amount cards */}
           <View style={styles.amountGrid}>
@@ -271,7 +279,9 @@ export default function RewardPoolScreen() {
             )}
           </TouchableOpacity>
 
-          <Text style={styles.termsLink}>See terms of trust →</Text>
+          <Text style={styles.termsLink}>
+            Local-only reward terms accepted when you continue.
+          </Text>
         </>
       )}
 

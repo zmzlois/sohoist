@@ -2,9 +2,11 @@
   "name": "wing-men.cc",
   "private": true,
   "scripts": {
+    "predev": "sh scripts/sync-env.sh",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
+    "testflight": "pnpm --filter native-app testflight",
     "clean": "turbo run clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\" --ignore-path .gitignore"
   },

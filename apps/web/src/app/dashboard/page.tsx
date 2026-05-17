@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
-import { useQuery, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@packages/backend/convex/_generated/api";
 
 const ADMIN_EMAIL = "lois@sf-voice.sh";
-const PORTRAIT_STORAGE_PREFIX = "sohoist:web:pencilPortrait";
 
 // ─── shared style tokens ────────────────────────────────────────────────────
 
@@ -33,11 +32,18 @@ export default function DashboardPage() {
   const upsertUser = useMutation(api.users.upsertUser);
   const reviewApplication = useMutation(api.admin.reviewApplication);
   const inviteReferrer = useMutation(api.referrers.inviteReferrer);
+  const generateUploadUrl = useMutation(api.photos.generateUploadUrl);
+  const savePhoto = useMutation(api.photos.savePhoto);
+  const saveSketch = useMutation(api.photos.saveSketch);
+  const generateSketchWithNanoBanana = useAction(
+    api.photos.generateSketchWithNanoBanana,
+  );
 
   const [acting, setActing] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [notesMap, setNotesMap] = useState<Record<string, string>>({});
-  const [portraitOriginal, setPortraitOriginal] = useState("");
+  const [portraitPhotoId, setPortraitPhotoId] = useState("");
+  const [portraitPhotoStorageId, setPortraitPhotoStorageId] = useState("");
   const [portraitSketch, setPortraitSketch] = useState("");
   const [portraitStatus, setPortraitStatus] = useState("");
   const [portraitError, setPortraitError] = useState("");
@@ -58,8 +64,24 @@ export default function DashboardPage() {
     api.profile.getMyProfile,
     sessionEmail ? { email: sessionEmail } : "skip",
   );
+  const application = useQuery(
+    api.applications.getMyApplication,
+    sessionEmail ? { email: sessionEmail } : "skip",
+  );
   const referrers = useQuery(
     api.referrers.getMyReferrers,
+    sessionEmail ? { email: sessionEmail } : "skip",
+  );
+  const rewardPool = useQuery(
+    api.rewardPools.getMyRewardPool,
+    sessionEmail ? { email: sessionEmail } : "skip",
+  );
+  const assets = useQuery(
+    api.photos.getMyAssets,
+    sessionEmail ? { email: sessionEmail } : "skip",
+  );
+  const referrals = useQuery(
+    api.referrals.getMyReferrals,
     sessionEmail ? { email: sessionEmail } : "skip",
   );
   const applications = useQuery(
@@ -90,11 +112,74 @@ export default function DashboardPage() {
     );
   }
 
-  const shareUrl = `https://sohoist.app/member/${convexUser?._id ?? ""}`;
+  const shareMessage =
+    "I'm using Sohoist for private introductions. If someone comes to mind who you genuinely think I'd click with, I'd love your referral.";
+  const displayedPortrait = portraitSketch || assets?.sketch?.url || "";
+  const sourcePhotoId = portraitPhotoId || assets?.photo?._id || "";
+  const sourcePhotoStorageId =
+    portraitPhotoStorageId || assets?.photo?.storageId || "";
+  const hasVoiceBrief = Boolean(profile?.voiceInterviewId);
+  const hasSketch = Boolean(assets?.sketch);
+  const hasReferrers = (referrers?.length ?? 0) > 0;
+  const nextStep = !application
+    ? {
+        label: "Step 1",
+        title: "Apply privately.",
+        body: "Start with a quiet membership application before opening your intro brief.",
+        href: "/apply",
+        cta: "Start application",
+      }
+    : application.status !== "approved" && !profile
+      ? {
+          label: "Membership",
+          title: "Application in review.",
+          body: "Your private profile opens once the application is approved.",
+          href: "/application-status",
+          cta: "View status",
+        }
+        : !hasVoiceBrief
+        ? {
+            label: "Step 1 of 4",
+            title: "Create your intro brief.",
+            body: "Use the voice agent or written draft to create who you are and who you are looking for.",
+            href: "/dashboard/voice",
+            cta: "Start voice brief",
+          }
+        : !hasSketch
+          ? {
+              label: "Step 2 of 4",
+              title: "Add your pencil portrait.",
+              body: "Upload a photo and turn it into a private sketch before sharing your brief.",
+              href: "/dashboard/photo",
+              cta: "Add portrait",
+            }
+        : !rewardPool
+          ? {
+              label: "Step 3 of 4",
+              title: "Set your private reward.",
+              body: "Save the thank-you signal before inviting more referrers.",
+              href: "/dashboard/reward",
+              cta: "Set reward",
+            }
+          : !hasReferrers
+            ? {
+                label: "Step 4 of 4",
+                title: "Invite trusted referrers.",
+                body: "Choose the friends who know your taste and can vouch with care.",
+                href: "/dashboard/referrers/invite",
+                cta: "Invite a friend",
+              }
+            : {
+                label: "Ready",
+                title: "Review your private intro loop.",
+                body: "Preview the shared profile, tune privacy, and track new introductions.",
+                href: "/dashboard/shared-preview",
+                cta: "Preview share",
+              };
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(shareMessage);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -125,24 +210,66 @@ export default function DashboardPage() {
     const file = event.target.files?.[0];
     if (!file || !sessionEmail) return;
 
-    setPortraitStatus("Creating pencil sketch...");
+    setActing("portrait");
+    setPortraitStatus("Uploading photo...");
     setPortraitError("");
 
     try {
-      const original = await readFileAsDataUrl(file);
-      const sketch = await createPencilSketch(original);
-      setPortraitOriginal(original);
-      setPortraitSketch(sketch);
-      localStorage.setItem(
-        `${PORTRAIT_STORAGE_PREFIX}:${sessionEmail}`,
-        JSON.stringify({ original, sketch }),
-      );
+      const uploadUrl = await generateUploadUrl();
+      const storageId = await uploadPhoto(uploadUrl, file);
+      const savedPhoto = await savePhoto({ storageId, email: sessionEmail });
+      setPortraitPhotoId(savedPhoto._id);
+      setPortraitPhotoStorageId(storageId);
+
+      setPortraitStatus("Beautifying pencil sketch...");
+      const generated = await generateSketchWithNanoBanana({
+        photoStorageId: storageId,
+        email: sessionEmail,
+      });
+      const savedSketch = await saveSketch({
+        storageId: generated.storageId,
+        sourcePhotoId: savedPhoto._id,
+        style: "editorial_pencil",
+        email: sessionEmail,
+      });
+
+      setPortraitSketch(savedSketch.url ?? generated.url ?? "");
       setPortraitStatus("Pencil sketch ready.");
-    } catch {
-      setPortraitError("Couldn't create the sketch. Try a smaller image.");
+    } catch (error) {
+      setPortraitError(portraitFailureMessage(error));
       setPortraitStatus("");
     } finally {
+      setActing(null);
       event.target.value = "";
+    }
+  }
+
+  async function handlePortraitRegenerate() {
+    if (!sourcePhotoStorageId || !sourcePhotoId || !sessionEmail || acting) return;
+
+    setActing("portrait");
+    setPortraitStatus("Beautifying pencil sketch...");
+    setPortraitError("");
+
+    try {
+      const generated = await generateSketchWithNanoBanana({
+        photoStorageId: sourcePhotoStorageId,
+        email: sessionEmail,
+      });
+      const savedSketch = await saveSketch({
+        storageId: generated.storageId,
+        sourcePhotoId: sourcePhotoId as any,
+        style: "editorial_pencil",
+        email: sessionEmail,
+      });
+
+      setPortraitSketch(savedSketch.url ?? generated.url ?? "");
+      setPortraitStatus("Pencil sketch ready.");
+    } catch (error) {
+      setPortraitError(portraitFailureMessage(error));
+      setPortraitStatus("");
+    } finally {
+      setActing(null);
     }
   }
 
@@ -272,6 +399,92 @@ export default function DashboardPage() {
           {profile?.headline ?? `Welcome, ${firstName ?? "there"}.`}
         </h1>
 
+        <section style={{ marginBottom: 32 }}>
+          <div style={s.card}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 20,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ maxWidth: 560 }}>
+                <p
+                  style={{
+                    fontFamily: t.body,
+                    fontSize: 11,
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    color: t.teal,
+                    margin: "0 0 8px",
+                  }}
+                >
+                  {nextStep.label}
+                </p>
+                <h2
+                  style={{
+                    fontFamily: t.display,
+                    fontSize: 30,
+                    fontWeight: 400,
+                    color: t.ink,
+                    lineHeight: 1.05,
+                    letterSpacing: "-0.02em",
+                    margin: "0 0 8px",
+                  }}
+                >
+                  {nextStep.title}
+                </h2>
+                <p
+                  style={{
+                    fontFamily: t.body,
+                    fontSize: 13,
+                    lineHeight: 1.65,
+                    color: t.stone,
+                    margin: 0,
+                  }}
+                >
+                  {nextStep.body}
+                </p>
+              </div>
+
+              <a href={nextStep.href} style={{ ...s.primaryBtn, padding: "0 24px" }}>
+                {nextStep.cta}
+              </a>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                gap: 10,
+                marginTop: 22,
+              }}
+            >
+              <Metric label="Brief" value={hasVoiceBrief ? "Ready" : "Draft"} />
+              <Metric
+                label="Referrers"
+                value={referrers ? String(referrers.length) : "0"}
+              />
+              <Metric
+                label="Reward"
+                value={
+                  rewardPool
+                    ? rewardPool.hideAmount
+                      ? "Funded"
+                      : `$${Math.round(rewardPool.amount / 100)}`
+                    : "None"
+                }
+              />
+              <Metric
+                label="Referrals"
+                value={referrals ? String(referrals.length) : "0"}
+              />
+            </div>
+          </div>
+        </section>
+
         {/* ── admin panel ─────────────────────────────────────────────────── */}
         {isAdmin && (
           <section style={{ marginBottom: 48 }}>
@@ -302,7 +515,7 @@ export default function DashboardPage() {
               <div
                 style={{ display: "flex", flexDirection: "column", gap: 12 }}
               >
-                {applications.map((app) => (
+                {applications.map((app: any) => (
                   <div key={app._id} style={s.card}>
                     <div
                       style={{
@@ -505,16 +718,16 @@ export default function DashboardPage() {
             <SectionHeader label="My Profile" />
 
             <div style={s.card}>
-              {/* photo upload + browser-side sketch preview */}
+              {/* photo upload + Nano Banana sketch preview */}
               <div
                 style={{
-                  height: 180,
+                  minHeight: displayedPortrait ? 0 : 180,
                   borderRadius: 14,
                   marginBottom: 16,
-                  backgroundColor: portraitSketch
+                  backgroundColor: displayedPortrait
                     ? "rgba(245,239,230,0.72)"
                     : "rgba(220,230,234,0.4)",
-                  border: portraitSketch
+                  border: displayedPortrait
                     ? `1px solid ${t.border}`
                     : `1px dashed ${t.borderHard}`,
                   display: "flex",
@@ -524,19 +737,22 @@ export default function DashboardPage() {
                   gap: 8,
                   overflow: "hidden",
                   position: "relative",
+                  padding: displayedPortrait ? 0 : undefined,
                 }}
               >
-                {portraitSketch ? (
+                {displayedPortrait ? (
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={portraitSketch}
+                      src={displayedPortrait}
                       alt="Generated pencil portrait"
                       style={{
                         width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
+                        height: "auto",
+                        maxHeight: 560,
+                        objectFit: "contain",
                         display: "block",
+                        backgroundColor: "rgba(245,239,230,0.72)",
                       }}
                     />
                     <span
@@ -604,46 +820,34 @@ export default function DashboardPage() {
                     textUnderlineOffset: 3,
                   }}
                 >
-                  {portraitSketch ? "Change photo" : "Upload photo"}
+                  {displayedPortrait ? "Change photo" : "Upload photo"}
                   <input
                     type="file"
                     accept="image/*"
                     style={{ display: "none" }}
+                    disabled={acting === "portrait"}
                     onChange={handlePortraitUpload}
                   />
                 </label>
-                {portraitOriginal && (
+                {sourcePhotoStorageId && (
                   <button
                     type="button"
-                    onClick={async () => {
-                      setPortraitStatus("Regenerating sketch...");
-                      setPortraitError("");
-                      try {
-                        const sketch = await createPencilSketch(portraitOriginal);
-                        setPortraitSketch(sketch);
-                        localStorage.setItem(
-                          `${PORTRAIT_STORAGE_PREFIX}:${sessionEmail}`,
-                          JSON.stringify({ original: portraitOriginal, sketch }),
-                        );
-                        setPortraitStatus("Pencil sketch ready.");
-                      } catch {
-                        setPortraitError("Couldn't regenerate the sketch.");
-                        setPortraitStatus("");
-                      }
-                    }}
+                    onClick={handlePortraitRegenerate}
+                    disabled={acting === "portrait"}
                     style={{
                       border: "none",
                       background: "transparent",
                       color: t.stone,
                       fontFamily: t.body,
                       fontSize: 12,
-                      cursor: "pointer",
+                      cursor: acting === "portrait" ? "default" : "pointer",
+                      opacity: acting === "portrait" ? 0.45 : 1,
                       padding: 0,
                       textDecoration: "underline",
                       textUnderlineOffset: 3,
                     }}
                   >
-                    Regenerate sketch
+                    {acting === "portrait" ? "Generating..." : "Regenerate sketch"}
                   </button>
                 )}
               </div>
@@ -783,8 +987,34 @@ export default function DashboardPage() {
                     transition: "background-color 0.2s",
                   }}
                 >
-                  {copied ? "Copied!" : "Share my profile →"}
+                  {copied ? "Copied!" : "Copy invite note"}
                 </button>
+                <a
+                  href="/dashboard/shared-preview"
+                  style={{
+                    ...s.primaryBtn,
+                    flex: 1,
+                    backgroundColor: "transparent",
+                    color: t.ink,
+                    border: `1px solid ${t.borderHard}`,
+                    textDecoration: "none",
+                  }}
+                >
+                  Preview share
+                </a>
+                <a
+                  href="/dashboard/photo"
+                  style={{
+                    ...s.primaryBtn,
+                    flex: 1,
+                    backgroundColor: "transparent",
+                    color: t.ink,
+                    border: `1px solid ${t.borderHard}`,
+                    textDecoration: "none",
+                  }}
+                >
+                  Add portrait
+                </a>
               </div>
 
               <p
@@ -797,7 +1027,7 @@ export default function DashboardPage() {
                   textAlign: "center",
                 }}
               >
-                Only people with the link can view your profile.
+                Create private links from the trusted circle screen.
               </p>
             </div>
           </section>
@@ -815,7 +1045,7 @@ export default function DashboardPage() {
 
             {referrers === undefined ? (
               <p style={s.muted}>Loading…</p>
-            ) : referrers.length === 0 ? (
+            ) : !referrers || referrers.length === 0 ? (
               <div style={s.emptyCard}>
                 <p
                   style={{
@@ -963,80 +1193,68 @@ export default function DashboardPage() {
   );
 }
 
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () =>
-      typeof reader.result === "string"
-        ? resolve(reader.result)
-        : reject(new Error("Invalid file result"));
-    reader.onerror = () => reject(reader.error ?? new Error("Read failed"));
-    reader.readAsDataURL(file);
+async function uploadPhoto(uploadUrl: string, file: File) {
+  const result = await fetch(uploadUrl, {
+    method: "POST",
+    headers: { "Content-Type": file.type || "image/jpeg" },
+    body: file,
   });
+  if (!result.ok) throw new Error("Photo upload failed");
+
+  const body = (await result.json()) as { storageId?: string };
+  if (!body.storageId) throw new Error("Photo upload did not return storage");
+  return body.storageId;
 }
 
-function loadBrowserImage(src: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new window.Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Image load failed"));
-    image.src = src;
-  });
+function portraitFailureMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("GEMINI_API_KEY")) {
+    return "Nano Banana is not configured yet. Set GEMINI_API_KEY in Convex env.";
+  }
+  if (message.includes("Photo upload")) {
+    return "Couldn't upload this photo. Try a smaller image.";
+  }
+  if (message.includes("did not return an image")) {
+    return "Nano Banana did not return a sketch. Try another portrait.";
+  }
+  return "Couldn't create the Nano Banana sketch. Try another photo.";
 }
 
-async function createPencilSketch(src: string) {
-  const image = await loadBrowserImage(src);
-  const maxSide = 900;
-  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
-  const width = Math.max(1, Math.round(image.width * scale));
-  const height = Math.max(1, Math.round(image.height * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas unavailable");
-
-  ctx.drawImage(image, 0, 0, width, height);
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const { data } = imageData;
-  const luminance = new Uint8ClampedArray(width * height);
-
-  for (let i = 0; i < data.length; i += 4) {
-    luminance[i / 4] = Math.round(
-      data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114,
-    );
-  }
-
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const index = y * width + x;
-      const right = luminance[y * width + Math.min(width - 1, x + 1)];
-      const down = luminance[Math.min(height - 1, y + 1) * width + x];
-      const edge =
-        Math.abs(luminance[index] - right) + Math.abs(luminance[index] - down);
-      const shade = Math.max(34, 245 - edge * 3.4 - (255 - luminance[index]) * 0.18);
-      const warm = Math.round(shade);
-      const offset = index * 4;
-      data[offset] = warm;
-      data[offset + 1] = Math.max(0, warm - 3);
-      data[offset + 2] = Math.max(0, warm - 9);
-      data[offset + 3] = 255;
-    }
-  }
-
-  ctx.putImageData(imageData, 0, 0);
-  ctx.globalCompositeOperation = "multiply";
-  ctx.strokeStyle = "rgba(43,42,40,0.11)";
-  ctx.lineWidth = 0.8;
-  for (let y = 8; y < height; y += 13) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y + Math.sin(y) * 3);
-    ctx.stroke();
-  }
-
-  return canvas.toDataURL("image/jpeg", 0.9);
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        borderRadius: 16,
+        border: `1px solid ${t.border}`,
+        backgroundColor: "rgba(245,239,230,0.46)",
+        padding: "12px 14px",
+      }}
+    >
+      <p
+        style={{
+          fontFamily: t.mono,
+          fontSize: 18,
+          color: t.ink,
+          margin: "0 0 2px",
+        }}
+      >
+        {value}
+      </p>
+      <p
+        style={{
+          fontFamily: t.body,
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: t.stone,
+          margin: 0,
+        }}
+      >
+        {label}
+      </p>
+    </div>
+  );
 }
 
 // ─── sub-components ──────────────────────────────────────────────────────────

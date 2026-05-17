@@ -92,8 +92,16 @@ export const saveVoiceAnswers = mutation({
     for (const { question, answer } of answers) {
       byQ[question.toLowerCase()] = answer;
     }
-    const bio = byQ["who are you?"] ?? "";
-    const openTo = byQ["what are you looking for?"] ?? "";
+    const bio = [
+      byQ["who are you?"],
+      byQ["what are you like in real life?"],
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const openTo =
+      byQ["what are you looking for?"] ??
+      byQ["what kind of person do you enjoy being around?"] ??
+      "";
     const friendsShouldReferSomeoneWho =
       byQ["what should friends know before referring someone to you?"] ?? "";
     const doNotReferIf = byQ["what are your dealbreakers?"] ?? "";

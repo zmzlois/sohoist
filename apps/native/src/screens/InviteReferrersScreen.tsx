@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Share,
   StyleSheet,
   View,
   Text,
@@ -64,11 +65,13 @@ export default function InviteReferrersScreen() {
     user?.email ? { email: user.email } : "skip",
   );
   const inviteReferrer = useMutation(api.referrers.inviteReferrer);
+  const createShareLink = useMutation(api.referrers.createShareLink);
   const approveReferrer = useMutation(api.referrers.approveReferrer);
   const removeReferrer = useMutation(api.referrers.removeReferrer);
 
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
 
@@ -112,6 +115,23 @@ export default function InviteReferrersScreen() {
     }
   };
 
+  const handleShareLink = async () => {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      const token = await createShareLink({ email: user?.email });
+      const link = `sohoist://invite/${token}`;
+      await Share.share({
+        message: `I'm using Sohoist for private introductions. If someone comes to mind who you think I'd genuinely click with, I'd love your referral.\n\n${link}`,
+        url: link,
+      });
+    } catch {
+      // user cancelled share sheet — not an error
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const referrerCount = referrers?.length ?? 0;
 
   return (
@@ -143,6 +163,34 @@ export default function InviteReferrersScreen() {
           </Text>
 
           <View style={components.divider} />
+        </View>
+
+        {/* share link — primary method */}
+        <View style={styles.shareCard}>
+          <Text style={styles.shareCardHeadline}>Share your intro brief.</Text>
+          <Text style={styles.shareCardBody}>
+            Send a private link to anyone you trust. They'll see your intro brief and can choose to join as a referrer.
+          </Text>
+          <TouchableOpacity
+            style={[components.primaryButton, sharing && styles.disabledBtn]}
+            onPress={handleShareLink}
+            disabled={sharing}
+            activeOpacity={0.85}
+          >
+            {sharing ? (
+              <ActivityIndicator color={colors.paper} size="small" />
+            ) : (
+              <Text style={components.primaryButtonText}>
+                Share my intro brief →
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.orDivider}>
+          <View style={styles.orLine} />
+          <Text style={styles.orText}>or invite by email</Text>
+          <View style={styles.orLine} />
         </View>
 
         {/* invite by email */}
@@ -216,12 +264,12 @@ export default function InviteReferrersScreen() {
         </View>
 
         {/* loading or genuinely empty */}
-        {(referrers === undefined || referrers.length === 0) && (
+        {(!referrers || referrers.length === 0) && (
           <Text style={styles.emptyCircle}>No one invited yet.</Text>
         )}
 
         {/* referrer rows */}
-        {referrers?.map((row) => {
+        {referrers?.map((row: any) => {
           const isPending = actionPending === row._id;
 
           return (
@@ -520,5 +568,49 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 12,
     color: colors.stone,
+  },
+
+  // share card
+  shareCard: {
+    backgroundColor: colors.warmIvory,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: "rgba(120, 100, 75, 0.14)",
+    padding: spacing.cardPad,
+    marginBottom: 20,
+    gap: 10,
+  },
+  shareCardHeadline: {
+    fontFamily: fonts.display,
+    fontSize: 22,
+    color: colors.ink,
+    letterSpacing: -0.3,
+  },
+  shareCardBody: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.stone,
+    lineHeight: 21,
+  },
+  disabledBtn: { opacity: 0.5 },
+
+  // or divider
+  orDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 20,
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(93, 90, 87, 0.14)",
+  },
+  orText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: colors.stone,
+    opacity: 0.6,
   },
 });

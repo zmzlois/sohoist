@@ -54,7 +54,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     authorized({ auth, request }) {
       const path = request.nextUrl.pathname;
       const protectedRoute =
-        path.startsWith("/dashboard") || path.startsWith("/admin");
+        path.startsWith("/dashboard") ||
+        path.startsWith("/admin") ||
+        path.startsWith("/apply") ||
+        path.startsWith("/application-status");
 
       return protectedRoute ? !!auth?.user : true;
     },

@@ -152,6 +152,8 @@ export default defineSchema({
       v.literal("expired"),
     ),
     hideAmount: v.boolean(),
+    termsAcceptedAt: v.optional(v.number()),
+    termsVersion: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_memberId", ["memberId"]),
@@ -213,7 +215,8 @@ export default defineSchema({
   relationships: defineTable({
     introductionId: v.id("introductions"),
     memberId: v.id("users"),
-    candidateId: v.id("users"),
+    candidateId: v.optional(v.id("users")),
+    candidateEmail: v.optional(v.string()),
     status: v.union(
       v.literal("intro_accepted"),
       v.literal("first_date_confirmed"),

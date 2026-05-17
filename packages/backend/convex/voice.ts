@@ -20,8 +20,10 @@ export const transcribeAndSave = action({
   args: {
     storageId: v.string(),
     email: v.optional(v.string()),
+    mimeType: v.optional(v.string()),
+    fileName: v.optional(v.string()),
   },
-  handler: async (ctx, { storageId, email }) => {
+  handler: async (ctx, { storageId, email, mimeType, fileName }) => {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     // pull audio blob from Convex storage
@@ -30,7 +32,9 @@ export const transcribeAndSave = action({
 
     // transcribe with Whisper
     const arrayBuffer = await blob.arrayBuffer();
-    const audioFile = new File([arrayBuffer], "recording.m4a", { type: "audio/mp4" });
+    const audioFile = new File([arrayBuffer], fileName ?? "recording.webm", {
+      type: mimeType ?? blob.type ?? "audio/webm",
+    });
 
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
